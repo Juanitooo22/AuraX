@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AuraX — EternionX</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#f7f8fc;
+  --white:#ffffff;
+  --sidebar:#0d1117;
+  --sb-border:#1a2030;
+  --sb-hover:#161c28;
+  --sb-active:#1a2540;
+  --sb-text:#c9d1e0;
+  --sb-muted:#4a5568;
+  --blue:#1a6bff;
+  --blue-dark:#0f4fd4;
+  --blue-light:#e8f0ff;
+  --text:#0d1117;
+  --muted:#6b7280;
+  --border:#e5e7eb;
+  --radius:12px;
+  --fh:'Space Grotesk',sans-serif;
+  --fb:'Inter',sans-serif;
+}
+
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--fb);overflow:hidden}
+
+/* SHELL */
+.shell{display:flex;height:100vh;width:100vw}
+
+/* SIDEBAR */
+.sidebar{
+  width:260px;flex-shrink:0;background:var(--sidebar);
+  display:flex;flex-direction:column;
+  transition:width 0.25s cubic-bezier(.4,0,.2,1);
+  overflow:hidden;position:relative;z-index:10;
+}
+.sidebar.collapsed{width:0}
+.sidebar-inner{width:260px;display:flex;flex-direction:column;height:100%}
+
+/* LOGO */
+.sb-logo{
+  display:flex;align-items:center;gap:10px;
+  padding:20px 18px 16px;
+  border-bottom:1px solid var(--sb-border);flex-shrink:0;
+}
+.aurax-mark{width:34px;height:34px;flex-shrink:0}
+.sb-brand{font-family:var(--fh);font-size:17px;font-weight:700;color:#fff;letter-spacing:0.3px}
+.sb-dev{font-size:10px;color:var(--sb-muted);margin-top:1px}
+
+/* NEW CHAT */
+.new-chat-btn{
+  margin:14px 14px 10px;padding:9px 14px;
+  background:var(--blue);border:none;border-radius:9px;
+  color:#fff;font-family:var(--fb);font-size:13px;font-weight:500;
+  cursor:pointer;display:flex;align-items:center;gap:7px;
+  transition:background 0.15s;flex-shrink:0;
+}
+.new-chat-btn:hover{background:var(--blue-dark)}
+
+/* MODEL SELECTOR */
+.model-selector{padding:10px 14px;flex-shrink:0}
+.model-label{font-size:10px;font-weight:600;color:var(--sb-muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+.model-options{display:flex;flex-direction:column;gap:6px}
+.model-option{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 10px;border-radius:9px;cursor:pointer;
+  border:1px solid transparent;transition:all 0.15s;
+}
+.model-option:hover{background:var(--sb-hover)}
+.model-option.selected{background:var(--sb-active);border-color:rgba(26,107,255,0.3)}
+.model-icon{
+  width:30px;height:30px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.model-icon.eternionx{background:linear-gradient(135deg,#1a6bff,#7c3aed)}
+.model-icon.qwen{background:linear-gradient(135deg,#0891b2,#06b6d4)}
+.model-info{min-width:0}
+.model-name{font-size:12.5px;font-weight:600;color:#fff;white-space:nowrap}
+.model-desc{font-size:10.5px;color:var(--sb-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.model-check{margin-left:auto;flex-shrink:0;opacity:0}
+.model-option.selected .model-check{opacity:1}
+
+/* SECTION LABEL */
+.sb-label{font-size:10px;font-weight:600;color:var(--sb-muted);letter-spacing:1.1px;text-transform:uppercase;padding:10px 18px 4px;flex-shrink:0}
+
+/* CHAT LIST */
+.chat-list{flex:1;overflow-y:auto;padding:4px 10px}
+.chat-list::-webkit-scrollbar{width:3px}
+.chat-list::-webkit-scrollbar-thumb{background:#2a3040;border-radius:2px}
+
+.chat-item{display:flex;align-items:center;border-radius:8px;cursor:pointer;transition:background 0.15s;position:relative}
+.chat-item:hover{background:var(--sb-hover)}
+.chat-item.active{background:var(--sb-active)}
+.chat-item-name{flex:1;font-size:12.5px;color:var(--sb-text);padding:8px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.chat-item.active .chat-item-name{color:#fff}
+.chat-item-actions{display:none;gap:2px;padding-right:6px;flex-shrink:0}
+.chat-item:hover .chat-item-actions,.chat-item.active .chat-item-actions{display:flex}
+.ci-btn{width:24px;height:24px;border-radius:5px;border:none;background:transparent;color:var(--sb-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.1s}
+.ci-btn:hover{background:rgba(255,255,255,0.08);color:#fff}
+.ci-btn.del:hover{color:#ff6b6b}
+
+/* PROFILE FOOTER */
+.sb-footer{
+  padding:12px 14px;border-top:1px solid var(--sb-border);
+  display:flex;align-items:center;gap:10px;flex-shrink:0;
+  position:relative;cursor:pointer;
+}
+.sb-footer:hover{background:var(--sb-hover)}
+.profile-av{
+  width:34px;height:34px;border-radius:50%;
+  background:var(--blue);display:flex;align-items:center;justify-content:center;
+  font-family:var(--fh);font-size:14px;font-weight:700;color:#fff;flex-shrink:0;
+}
+.profile-info{min-width:0;flex:1}
+.profile-name{font-size:12.5px;color:#fff;font-weight:500}
+.profile-sub{font-size:10.5px;color:var(--sb-muted)}
+.online-dot{width:7px;height:7px;border-radius:50%;background:#22d36f;box-shadow:0 0 5px #22d36f;flex-shrink:0}
+
+/* PROFILE MENU */
+.profile-menu{
+  position:absolute;bottom:60px;left:10px;right:10px;
+  background:#1a2030;border:1px solid var(--sb-border);
+  border-radius:10px;padding:4px;z-index:50;
+  display:none;box-shadow:0 8px 24px rgba(0,0,0,0.4);
+}
+.profile-menu.open{display:block}
+.pm-item{
+  display:flex;align-items:center;gap:8px;
+  padding:9px 10px;border-radius:7px;
+  font-size:13px;color:var(--sb-text);cursor:pointer;
+  transition:background 0.1s;
+}
+.pm-item:hover{background:var(--sb-hover);color:#fff}
+
+/* TOGGLE BTN */
+.toggle-btn{
+  position:fixed;top:12px;left:12px;z-index:100;
+  width:34px;height:34px;border-radius:9px;
+  border:1px solid #1e2535;background:#0d1117;
+  color:#8899aa;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:color 0.15s,border-color 0.15s;
+}
+.toggle-btn:hover{color:#fff;border-color:#2a3550}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--white);position:relative}
+
+/* TOPBAR */
+.topbar{
+  height:54px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px 0 56px;gap:10px;
+  flex-shrink:0;background:var(--white);
+}
+.tb-title{font-family:var(--fh);font-size:14px;font-weight:600;color:var(--text)}
+.tb-sep{width:1px;height:14px;background:var(--border)}
+.tb-sub{font-size:12px;color:var(--muted);font-style:italic}
+.tb-dev{margin-left:auto;font-size:11px;color:var(--muted)}
+.tb-dev span{color:var(--blue);font-weight:600}
+
+/* MESSAGES */
+.messages{flex:1;overflow-y:auto;padding:28px 0 16px;scroll-behavior:smooth}
+.messages::-webkit-scrollbar{width:5px}
+.messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* WELCOME */
+.welcome{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:calc(100vh - 200px);gap:10px;padding:40px 24px;text-align:center;
+}
+.welcome-icon{
+  width:64px;height:64px;border-radius:18px;background:#0d1117;
+  display:flex;align-items:center;justify-content:center;margin-bottom:6px;
+}
+.welcome-greeting{font-family:var(--fh);font-size:26px;font-weight:700;color:var(--text)}
+.welcome-greeting span{color:var(--blue)}
+.welcome p{font-size:14px;color:var(--muted);max-width:340px;line-height:1.6}
+.welcome-model{
+  display:flex;align-items:center;gap:6px;margin-top:4px;
+  font-size:12px;color:var(--muted);
+}
+.welcome-model-dot{width:6px;height:6px;border-radius:50%;background:var(--blue)}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px;max-width:500px}
+.chip{
+  padding:8px 15px;border:1px solid var(--border);border-radius:20px;
+  font-size:13px;color:var(--muted);cursor:pointer;background:var(--white);transition:all 0.15s;
+}
+.chip:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-light)}
+
+/* MESSAGES */
+.msg-row{
+  display:flex;padding:5px 24px;gap:10px;
+  animation:fu 0.2s ease;max-width:860px;margin:0 auto;width:100%;
+}
+@keyframes fu{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.msg-row.user{flex-direction:row-reverse}
+.av{
+  width:28px;height:28px;border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;flex-shrink:0;margin-top:3px;
+}
+.av.ai{background:#0d1117;color:#fff;font-family:var(--fh)}
+.av.user{background:var(--blue);color:#fff;font-family:var(--fh)}
+.bubble{
+  max-width:68%;padding:11px 15px;border-radius:14px;
+  font-size:14px;line-height:1.65;white-space:pre-wrap;word-break:break-word;
+}
+.bubble.ai{background:#f4f6fb;border:1px solid var(--border);color:var(--text);border-radius:4px 14px 14px 14px}
+.bubble.user{background:var(--blue);color:#fff;border-radius:14px 4px 14px 14px}
+.typing-dots{display:flex;gap:4px;padding:3px 0}
+.typing-dots span{width:6px;height:6px;border-radius:50%;background:var(--blue);animation:bounce 1.1s infinite ease-in-out}
+.typing-dots span:nth-child(2){animation-delay:.18s}
+.typing-dots span:nth-child(3){animation-delay:.36s}
+@keyframes bounce{0%,80%,100%{transform:scale(0.65);opacity:0.35}40%{transform:scale(1);opacity:1}}
+
+/* INPUT AREA */
+.input-area{padding:12px 24px 16px;border-top:1px solid var(--border);background:var(--white);flex-shrink:0}
+.input-attachments{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;max-width:860px;margin-left:auto;margin-right:auto}
+.attachment-chip{
+  display:flex;align-items:center;gap:5px;
+  background:var(--blue-light);border:1px solid rgba(26,107,255,0.2);
+  border-radius:6px;padding:4px 8px;font-size:12px;color:var(--blue);
+}
+.attachment-chip button{background:none;border:none;color:var(--blue);cursor:pointer;font-size:14px;line-height:1;padding:0}
+.input-wrap{
+  display:flex;align-items:flex-end;gap:8px;
+  background:#f4f6fb;border:1.5px solid var(--border);
+  border-radius:14px;padding:8px 8px 8px 12px;
+  max-width:860px;margin:0 auto;
+  transition:border-color 0.2s,box-shadow 0.2s;
+}
+.input-wrap:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,107,255,0.08);background:var(--white)}
+.input-actions{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.input-btn{
+  width:32px;height:32px;border-radius:8px;border:none;
+  background:transparent;color:var(--muted);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.15s;flex-shrink:0;
+}
+.input-btn:hover{background:var(--border);color:var(--text)}
+.input-btn.active{color:var(--blue)}
+.input-wrap textarea{
+  flex:1;background:transparent;border:none;outline:none;
+  color:var(--text);font-family:var(--fb);font-size:14px;
+  resize:none;line-height:1.5;max-height:150px;overflow-y:auto;
+}
+.input-wrap textarea::placeholder{color:var(--muted)}
+.send-btn{
+  width:36px;height:36px;border-radius:10px;
+  background:var(--blue);border:none;color:#fff;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:background 0.15s,transform 0.1s;
+}
+.send-btn:hover{background:var(--blue-dark);transform:scale(1.04)}
+.send-btn:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+.input-hint{font-size:11px;color:var(--muted);text-align:center;margin-top:7px}
+#fileInput{display:none}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;padding:0;width:460px;max-height:85vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.2);display:flex;flex-direction:column}
+.modal-header{padding:20px 24px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-header h3{font-family:var(--fh);font-size:16px;font-weight:600}
+.modal-close{width:28px;height:28px;border-radius:6px;border:none;background:var(--bg);color:var(--muted);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.modal-close:hover{background:var(--border)}
+.modal-tabs{display:flex;gap:0;padding:16px 24px 0;border-bottom:1px solid var(--border);flex-shrink:0}
+.modal-tab{
+  padding:8px 16px;font-size:13px;font-weight:500;
+  color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;
+  transition:all 0.15s;margin-bottom:-1px;
+}
+.modal-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.modal-body{padding:20px 24px;overflow-y:auto;flex:1}
+
+/* SETTINGS SECTIONS */
+.setting-group{margin-bottom:20px}
+.setting-group label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
+.setting-input{
+  width:100%;padding:9px 12px;border:1.5px solid var(--border);
+  border-radius:9px;font-size:14px;font-family:var(--fb);
+  outline:none;color:var(--text);background:var(--bg);transition:border-color 0.15s;
+}
+.setting-input:focus{border-color:var(--blue)}
+.setting-toggle{display:flex;align-items:center;justify-content:space-between;padding:10px 0}
+.toggle-label{font-size:13px;color:var(--text)}
+.toggle-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.toggle-switch{
+  width:40px;height:22px;border-radius:11px;background:var(--border);
+  cursor:pointer;position:relative;transition:background 0.2s;flex-shrink:0;border:none;
+}
+.toggle-switch.on{background:var(--blue)}
+.toggle-switch::after{
+  content:'';position:absolute;top:3px;left:3px;
+  width:16px;height:16px;border-radius:50%;background:#fff;
+  transition:transform 0.2s;
+}
+.toggle-switch.on::after{transform:translateX(18px)}
+.modal-save{
+  width:100%;padding:10px;background:var(--blue);color:#fff;
+  border:none;border-radius:9px;font-size:14px;font-weight:500;
+  cursor:pointer;margin-top:8px;transition:background 0.15s;
+}
+.modal-save:hover{background:var(--blue-dark)}
+
+/* MODEL CARDS EN MODAL */
+.model-cards{display:flex;flex-direction:column;gap:10px}
+.model-card{
+  display:flex;align-items:center;gap:12px;
+  padding:14px;border:1.5px solid var(--border);border-radius:12px;
+  cursor:pointer;transition:all 0.15s;
+}
+.model-card:hover{border-color:var(--blue);background:var(--blue-light)}
+.model-card.selected{border-color:var(--blue);background:var(--blue-light)}
+.mc-icon{
+  width:44px;height:44px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.mc-icon.eternionx{background:linear-gradient(135deg,#1a6bff,#7c3aed)}
+.mc-icon.qwen{background:linear-gradient(135deg,#0891b2,#06b6d4)}
+.mc-info{flex:1}
+.mc-name{font-family:var(--fh);font-size:14px;font-weight:600;color:var(--text)}
+.mc-desc{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4}
+.mc-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s}
+.model-card.selected .mc-check{background:var(--blue);border-color:var(--blue)}
+
+/* RENAME MODAL */
+.rename-modal{background:#fff;border-radius:14px;padding:24px;width:320px;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.rename-modal h3{font-family:var(--fh);font-size:15px;font-weight:600;margin-bottom:14px}
+.rename-modal input{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;font-family:var(--fb);outline:none;color:var(--text)}
+.rename-modal input:focus{border-color:var(--blue)}
+.rename-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.rm-btn{padding:7px 16px;border-radius:8px;font-size:13px;font-family:var(--fb);cursor:pointer;border:none}
+.rm-btn.cancel{background:var(--bg);color:var(--muted)}
+.rm-btn.confirm{background:var(--blue);color:#fff}
+
+/* HOW TO USE */
+.howto-section{margin-bottom:20px}
+.howto-section h4{font-family:var(--fh);font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px}
+.howto-list{display:flex;flex-direction:column;gap:6px}
+.howto-item{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--muted);line-height:1.5}
+.howto-icon{font-size:14px;flex-shrink:0;margin-top:1px}
+
+@media(max-width:640px){
+  .sidebar{position:fixed;top:0;left:0;height:100%;z-index:50}
+  .msg-row{padding:5px 14px}
+  .bubble{max-width:85%}
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-inner">
+
+    <div class="sb-logo">
+      <svg class="aurax-mark" viewBox="0 0 34 34" fill="none">
+        <path d="M3 27 L10.5 7 L14.5 16 L10 22" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9"/>
+        <path d="M14.5 16 L18 7 L31 27" stroke="url(#lg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <path d="M21.5 7 L13 27" stroke="url(#lg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <line x1="7" y1="19" x2="13" y2="19" stroke="white" stroke-width="1.8" stroke-linecap="round" opacity="0.9"/>
+        <defs>
+          <linearGradient id="lg" x1="13" y1="7" x2="31" y2="27" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#4d9fff"/><stop offset="100%" stop-color="#1a6bff"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      <div>
+        <div class="sb-brand">AuraX</div>
+        <div class="sb-dev">by EternionX</div>
+      </div>
+    </div>
+
+    <button class="new-chat-btn" onclick="newChat()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nuevo chat
+    </button>
+
+    <!-- MODEL SELECTOR -->
+    <div class="model-selector">
+      <div class="model-label">Modelo</div>
+      <div class="model-options">
+        <div class="model-option selected" id="opt-eternionx" onclick="selectModel('eternionx')">
+          <div class="model-icon eternionx">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <div class="model-info">
+            <div class="model-name">EternionX</div>
+            <div class="model-desc">Llama · Búsqueda web</div>
+          </div>
+          <svg class="model-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1a6bff" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="model-option" id="opt-qwen" onclick="selectModel('qwen')">
+          <div class="model-icon qwen">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+          <div class="model-info">
+            <div class="model-name">Qwen</div>
+            <div class="model-desc">General · Rápido</div>
+          </div>
+          <svg class="model-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1a6bff" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="sb-label">Recientes</div>
+    <div class="chat-list" id="chatList"></div>
+
+    <!-- PROFILE -->
+    <div class="profile-menu" id="profileMenu">
+      <div class="pm-item" onclick="openSettings('general')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+        Configuración
+      </div>
+      <div class="pm-item" onclick="openSettings('models')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Modelos
+      </div>
+      <div class="pm-item" onclick="openSettings('howto')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Cómo usar
+      </div>
+    </div>
+
+    <div class="sb-footer" onclick="toggleProfileMenu()">
+      <div class="profile-av" id="profileAv">J</div>
+      <div class="profile-info">
+        <div class="profile-name" id="profileName">Juanito</div>
+        <div class="profile-sub">Pro · EternionX</div>
+      </div>
+      <div class="online-dot"></div>
+    </div>
+
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main" id="mainArea">
+  <button class="toggle-btn" onclick="toggleSidebar()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+  </button>
+
+  <div class="topbar">
+    <span class="tb-title">AuraX</span>
+    <div class="tb-sep"></div>
+    <span class="tb-sub" id="topbarModel">EternionX · Búsqueda web activa</span>
+    <div class="tb-dev">Desarrollado por <span>Juanitoo</span></div>
+  </div>
+
+  <div class="messages" id="messages"></div>
+
+  <div class="input-area">
+    <div class="input-attachments" id="attachmentPreview"></div>
+    <div class="input-wrap">
+      <div class="input-actions">
+        <button class="input-btn" title="Adjuntar archivo" onclick="document.getElementById('fileInput').click()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        </button>
+        <button class="input-btn" id="webSearchBtn" title="Búsqueda web" onclick="toggleWebSearch()" style="color:var(--blue)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+      </div>
+      <textarea id="input" placeholder="Escribe un mensaje…" rows="1"
+        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+      </button>
+    </div>
+    <div class="input-hint">AuraX puede cometer errores · Verifica info importante</div>
+  </div>
+  <input type="file" id="fileInput" multiple accept="image/*,.pdf,.xlsx,.xls,.docx,.doc,.pptx,.ppt" onchange="handleFiles(event)">
+</main>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Configuración</h3>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="modal-tabs">
+      <div class="modal-tab active" id="tab-general" onclick="switchTab('general')">General</div>
+      <div class="modal-tab" id="tab-models" onclick="switchTab('models')">Modelos</div>
+      <div class="modal-tab" id="tab-howto" onclick="switchTab('howto')">Cómo usar</div>
+    </div>
+    <div class="modal-body">
+
+      <!-- GENERAL TAB -->
+      <div id="panel-general">
+        <div class="setting-group">
+          <label>¿Cómo quieres que te llame?</label>
+          <input type="text" class="setting-input" id="nameInput" placeholder="Tu nombre" maxlength="30"/>
+        </div>
+        <div class="setting-group">
+          <label>Preferencias</label>
+          <div class="setting-toggle">
+            <div>
+              <div class="toggle-label">Búsqueda web</div>
+              <div class="toggle-sub">Buscar información actualizada en internet</div>
+            </div>
+            <button class="toggle-switch on" id="toggleWeb" onclick="toggleWebSetting()"></button>
+          </div>
+          <div class="setting-toggle">
+            <div>
+              <div class="toggle-label">Guardar conversaciones</div>
+              <div class="toggle-sub">Recordar historial de chats</div>
+            </div>
+            <button class="toggle-switch on" id="toggleSave" onclick="this.classList.toggle('on')"></button>
+          </div>
+        </div>
+        <button class="modal-save" onclick="saveSettings()">Guardar cambios</button>
+      </div>
+
+      <!-- MODELS TAB -->
+      <div id="panel-models" style="display:none">
+        <div class="model-cards">
+          <div class="model-card selected" id="card-eternionx" onclick="selectModelFromModal('eternionx')">
+            <div class="mc-icon eternionx">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </div>
+            <div class="mc-info">
+              <div class="mc-name">EternionX</div>
+              <div class="mc-desc">Modelo principal basado en Llama 3.2. Tiene búsqueda web en tiempo real con Google, Wikipedia y DuckDuckGo. Verificación con Claude Haiku para mayor precisión. Ideal para preguntas complejas, investigación y temas actuales.</div>
+            </div>
+            <div class="mc-check">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+          </div>
+          <div class="model-card" id="card-qwen" onclick="selectModelFromModal('qwen')">
+            <div class="mc-icon qwen">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            </div>
+            <div class="mc-info">
+              <div class="mc-name">Qwen 2.5</div>
+              <div class="mc-desc">Modelo rápido y eficiente de Alibaba con 3B parámetros. Excelente para código, matemáticas, HTML, Python y respuestas generales. Corre 100% local sin internet. Ideal para tareas técnicas y creativas.</div>
+            </div>
+            <div class="mc-check">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HOW TO USE TAB -->
+      <div id="panel-howto" style="display:none">
+        <div class="howto-section">
+          <h4>¿Qué puede hacer AuraX?</h4>
+          <div class="howto-list">
+            <div class="howto-item"><span class="howto-icon">💬</span>Responder preguntas en español e inglés sobre cualquier tema</div>
+            <div class="howto-item"><span class="howto-icon">🌐</span>Buscar información actualizada en Google, Wikipedia y más</div>
+            <div class="howto-item"><span class="howto-icon">💻</span>Crear código en HTML, CSS, JavaScript, Python, Lua y más</div>
+            <div class="howto-item"><span class="howto-icon">🗄️</span>Generar pipelines y queries de MongoDB</div>
+            <div class="howto-item"><span class="howto-icon">⚙️</span>Diseñar flujos de automatización para n8n</div>
+            <div class="howto-item"><span class="howto-icon">🧮</span>Resolver matemáticas y problemas lógicos</div>
+            <div class="howto-item"><span class="howto-icon">📄</span>Analizar documentos, imágenes y archivos adjuntos</div>
+          </div>
+        </div>
+        <div class="howto-section">
+          <h4>Cómo usar</h4>
+          <div class="howto-list">
+            <div class="howto-item"><span class="howto-icon">📎</span>Adjunta imágenes, Excel, Word o PowerPoint con el ícono de clip</div>
+            <div class="howto-item"><span class="howto-icon">🔍</span>Activa o desactiva la búsqueda web con el ícono de lupa</div>
+            <div class="howto-item"><span class="howto-icon">🤖</span>Cambia entre EternionX y Qwen en el panel izquierdo</div>
+            <div class="howto-item"><span class="howto-icon">✏️</span>Renombra o elimina chats pasando el cursor sobre ellos</div>
+            <div class="howto-item"><span class="howto-icon">⌨️</span>Presiona Enter para enviar, Shift+Enter para nueva línea</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- RENAME MODAL -->
+<div class="modal-overlay" id="renameModal">
+  <div class="rename-modal">
+    <h3>Renombrar chat</h3>
+    <input type="text" id="renameInput" placeholder="Nombre del chat" maxlength="40"/>
+    <div class="rename-actions">
+      <button class="rm-btn cancel" onclick="closeRename()">Cancelar</button>
+      <button class="rm-btn confirm" onclick="confirmRename()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// STATE
+let chats = [];
+let activeId = null;
+let renameTargetId = null;
+let isLoading = false;
+let sidebarOpen = true;
+let currentModel = 'eternionx';
+let webSearchOn = true;
+let attachments = [];
+let userName = 'Juanito';
+let activeTab = 'general';
+
+const messagesEl = document.getElementById('messages');
+const inputEl = document.getElementById('input');
+const sendBtn = document.getElementById('sendBtn');
+const chatListEl = document.getElementById('chatList');
+const sidebar = document.getElementById('sidebar');
+const settingsModal = document.getElementById('settingsModal');
+const renameModal = document.getElementById('renameModal');
+const renameInput = document.getElementById('renameInput');
+const profileMenu = document.getElementById('profileMenu');
+const webSearchBtn = document.getElementById('webSearchBtn');
+
+// INIT
+function init() {
+  const saved = localStorage.getItem('aurax_name');
+  if (saved) { userName = saved; updateProfileName(); }
+  newChat();
+}
+
+function updateProfileName() {
+  document.getElementById('profileName').textContent = userName;
+  document.getElementById('profileAv').textContent = userName.charAt(0).toUpperCase();
+  document.getElementById('nameInput').value = userName;
+}
+
+// SIDEBAR
+function toggleSidebar() { sidebarOpen = !sidebarOpen; sidebar.classList.toggle('collapsed', !sidebarOpen); }
+
+// PROFILE MENU
+function toggleProfileMenu() { profileMenu.classList.toggle('open'); }
+document.addEventListener('click', e => {
+  if (!e.target.closest('.sb-footer') && !e.target.closest('.profile-menu')) {
+    profileMenu.classList.remove('open');
+  }
+});
+
+// MODEL
+function selectModel(m) {
+  currentModel = m;
+  document.getElementById('opt-eternionx').classList.toggle('selected', m === 'eternionx');
+  document.getElementById('opt-qwen').classList.toggle('selected', m === 'qwen');
+  document.getElementById('card-eternionx').classList.toggle('selected', m === 'eternionx');
+  document.getElementById('card-qwen').classList.toggle('selected', m === 'qwen');
+  document.getElementById('topbarModel').textContent = m === 'eternionx'
+    ? 'EternionX · Búsqueda web activa'
+    : 'Qwen 2.5 · Modo rápido';
+  renderMessages();
+}
+
+function selectModelFromModal(m) { selectModel(m); }
+
+// WEB SEARCH
+function toggleWebSearch() {
+  webSearchOn = !webSearchOn;
+  webSearchBtn.style.color = webSearchOn ? 'var(--blue)' : 'var(--muted)';
+  document.getElementById('toggleWeb').classList.toggle('on', webSearchOn);
+}
+
+function toggleWebSetting() {
+  const btn = document.getElementById('toggleWeb');
+  btn.classList.toggle('on');
+  webSearchOn = btn.classList.contains('on');
+  webSearchBtn.style.color = webSearchOn ? 'var(--blue)' : 'var(--muted)';
+}
+
+// SETTINGS
+function openSettings(tab) {
+  profileMenu.classList.remove('open');
+  settingsModal.classList.add('open');
+  switchTab(tab || 'general');
+  document.getElementById('nameInput').value = userName;
+}
+
+function closeSettings() { settingsModal.classList.remove('open'); }
+
+function switchTab(tab) {
+  activeTab = tab;
+  ['general','models','howto'].forEach(t => {
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+    document.getElementById(`panel-${t}`).style.display = t === tab ? 'block' : 'none';
+  });
+}
+
+function saveSettings() {
+  const newName = document.getElementById('nameInput').value.trim();
+  if (newName) {
+    userName = newName;
+    localStorage.setItem('aurax_name', userName);
+    updateProfileName();
+  }
+  closeSettings();
+  renderMessages();
+}
+
+settingsModal.addEventListener('click', e => { if (e.target === settingsModal) closeSettings(); });
+
+// FILES
+function handleFiles(e) {
+  const files = Array.from(e.target.files);
+  files.forEach(f => {
+    attachments.push(f);
+    renderAttachments();
+  });
+  e.target.value = '';
+}
+
+function renderAttachments() {
+  const preview = document.getElementById('attachmentPreview');
+  preview.innerHTML = '';
+  attachments.forEach((f, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'attachment-chip';
+    const icon = f.type.startsWith('image/') ? '🖼️' :
+                 f.name.endsWith('.pdf') ? '📄' :
+                 f.name.match(/xlsx?/) ? '📊' :
+                 f.name.match(/docx?/) ? '📝' :
+                 f.name.match(/pptx?/) ? '📋' : '📎';
+    chip.innerHTML = `${icon} ${f.name.length > 20 ? f.name.slice(0,20)+'…' : f.name}
+      <button onclick="removeAttachment(${i})">×</button>`;
+    preview.appendChild(chip);
+  });
+}
+
+function removeAttachment(i) { attachments.splice(i, 1); renderAttachments(); }
+
+// CHAT MANAGEMENT
+function newChat() {
+  const id = Date.now();
+  chats.unshift({ id, name: 'Nuevo chat', history: [] });
+  activateChat(id);
+  renderChatList();
+}
+
+function activateChat(id) {
+  activeId = id;
+  attachments = [];
+  renderAttachments();
+  renderChatList();
+  renderMessages();
+  inputEl.focus();
+}
+
+function deleteChat(id) {
+  chats = chats.filter(c => c.id !== id);
+  if (activeId === id) {
+    if (chats.length === 0) newChat();
+    else activateChat(chats[0].id);
+  } else renderChatList();
+}
+
+function openRename(id) {
+  renameTargetId = id;
+  const chat = chats.find(c => c.id === id);
+  renameInput.value = chat ? chat.name : '';
+  renameModal.classList.add('open');
+  setTimeout(() => { renameInput.focus(); renameInput.select(); }, 50);
+}
+
+function closeRename() { renameModal.classList.remove('open'); renameTargetId = null; }
+
+function confirmRename() {
+  const val = renameInput.value.trim();
+  if (!val) return;
+  const chat = chats.find(c => c.id === renameTargetId);
+  if (chat) { chat.name = val; renderChatList(); }
+  closeRename();
+}
+
+renameInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmRename(); if (e.key === 'Escape') closeRename(); });
+renameModal.addEventListener('click', e => { if (e.target === renameModal) closeRename(); });
+
+// RENDER CHAT LIST
+function renderChatList() {
+  chatListEl.innerHTML = '';
+  chats.forEach(chat => {
+    const item = document.createElement('div');
+    item.className = 'chat-item' + (chat.id === activeId ? ' active' : '');
+    const name = document.createElement('div');
+    name.className = 'chat-item-name';
+    name.textContent = chat.name;
+    name.onclick = () => activateChat(chat.id);
+    const actions = document.createElement('div');
+    actions.className = 'chat-item-actions';
+    const editBtn = document.createElement('button');
+    editBtn.className = 'ci-btn';
+    editBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+    editBtn.onclick = e => { e.stopPropagation(); openRename(chat.id); };
+    const delBtn = document.createElement('button');
+    delBtn.className = 'ci-btn del';
+    delBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+    delBtn.onclick = e => { e.stopPropagation(); deleteChat(chat.id); };
+    actions.appendChild(editBtn);
+    actions.appendChild(delBtn);
+    item.appendChild(name);
+    item.appendChild(actions);
+    chatListEl.appendChild(item);
+  });
+}
+
+// RENDER MESSAGES
+function renderMessages() {
+  messagesEl.innerHTML = '';
+  const chat = chats.find(c => c.id === activeId);
+  if (!chat) return;
+  if (chat.history.length === 0) {
+    const w = document.createElement('div');
+    w.className = 'welcome';
+    const modelName = currentModel === 'eternionx' ? 'EternionX' : 'Qwen 2.5';
+    w.innerHTML = `
+      <div class="welcome-icon">
+        <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+          <path d="M3 27 L10.5 7 L14.5 16 L10 22" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9"/>
+          <path d="M14.5 16 L18 7 L31 27" stroke="url(#wg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M21.5 7 L13 27" stroke="url(#wg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <line x1="7" y1="19" x2="13" y2="19" stroke="white" stroke-width="1.8" stroke-linecap="round" opacity="0.9"/>
+          <defs><linearGradient id="wg" x1="13" y1="7" x2="31" y2="27" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#4d9fff"/><stop offset="100%" stop-color="#1a6bff"/>
+          </linearGradient></defs>
+        </svg>
+      </div>
+      <div class="welcome-greeting">Hola, <span>${userName}</span> 👋</div>
+      <p>¿En qué puedo ayudarte hoy?</p>
+      <div class="welcome-model">
+        <div class="welcome-model-dot"></div>
+        ${modelName} activo
+      </div>
+      <div class="chips">
+        <div class="chip" onclick="sendChip(this)">¿Qué puedes hacer?</div>
+        <div class="chip" onclick="sendChip(this)">Explícame cómo funciona la IA</div>
+        <div class="chip" onclick="sendChip(this)">Ayúdame a escribir código</div>
+        <div class="chip" onclick="sendChip(this)">Busca info actualizada</div>
+      </div>`;
+    messagesEl.appendChild(w);
+    return;
+  }
+  chat.history.forEach(msg => appendBubble(msg.role === 'user' ? 'user' : 'ai', msg.content, false));
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+// APPEND BUBBLE
+function appendBubble(role, content, animate = true) {
+  const welcome = messagesEl.querySelector('.welcome');
+  if (welcome) welcome.remove();
+  const row = document.createElement('div');
+  row.className = `msg-row ${role}`;
+  if (!animate) row.style.animation = 'none';
+  const av = document.createElement('div');
+  av.className = `av ${role}`;
+  av.textContent = role === 'ai' ? 'AX' : userName.charAt(0).toUpperCase();
+  const bubble = document.createElement('div');
+  bubble.className = `bubble ${role}`;
+  if (content === '__typing__') {
+    bubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+    row.id = 'typing-row';
+  } else {
+    bubble.textContent = content;
+  }
+  row.appendChild(av);
+  row.appendChild(bubble);
+  messagesEl.appendChild(row);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return bubble;
+}
+
+function removeTyping() { const t = document.getElementById('typing-row'); if (t) t.remove(); }
+
+// SEND
+function sendChip(el) { inputEl.value = el.textContent; sendMessage(); }
+function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 150) + 'px'; }
+
+async function sendMessage() {
+  const text = inputEl.value.trim();
+  if (!text && attachments.length === 0 || isLoading) return;
+  const chat = chats.find(c => c.id === activeId);
+  if (!chat) return;
+  const displayText = text + (attachments.length > 0 ? `\n📎 ${attachments.map(f=>f.name).join(', ')}` : '');
+  inputEl.value = '';
+  inputEl.style.height = 'auto';
+  attachments = [];
+  renderAttachments();
+  isLoading = true;
+  sendBtn.disabled = true;
+  if (chat.history.length === 0) {
+    chat.name = (text || 'Archivo adjunto').slice(0, 30) + ((text || '').length > 30 ? '…' : '');
+    renderChatList();
+  }
+  appendBubble('user', displayText);
+  chat.history.push({ role: 'user', content: displayText });
+  appendBubble('ai', '__typing__');
+
+  try {
+    const res = await fetch('https://turbo-pointing-proper-properties.trycloudflare.com/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mensaje: text,
+        modelo: currentModel,
+        web_search: webSearchOn,
+        chat_id: String(activeId)
+      })
+    });
+
+    const data = await res.json();
+    const reply = data.respuesta;
+
+    removeTyping();
+    appendBubble('ai', reply);
+    chat.history.push({ role: 'assistant', content: reply });
+  } catch (error) {
+    removeTyping();
+    const fallbackReply = `Error al conectar con el servidor: ${error.message}`;
+    appendBubble('ai', fallbackReply);
+    chat.history.push({ role: 'assistant', content: fallbackReply });
+  } finally {
+    isLoading = false;
+    sendBtn.disabled = false;
+    inputEl.focus();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
