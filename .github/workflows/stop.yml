@@ -1,0 +1,14 @@
+name: Stop AuraX
+on:
+  schedule:
+    - cron: '0 1 * * *'
+jobs:
+  stop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stop instance
+        run: |
+          curl -X PUT "https://console.vast.ai/api/v0/instances/${{ secrets.VAST_INSTANCE_ID }}/" \
+          -H "Authorization: Bearer ${{ secrets.VAST_API_KEY }}" \
+          -H "Content-Type: application/json" \
+          -d '{"state": "stopped"}'
