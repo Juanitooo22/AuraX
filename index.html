@@ -899,9 +899,12 @@ async function sendMessage() {
   appendBubble('ai', '__typing__');
 
   try {
-    const res = await fetch('https://drained-expand-implosive.ngrok-free.dev', {
+    const res = await fetch('https://drained-expand-implosive.ngrok-free.dev/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': '1'
+      },
       body: JSON.stringify({
         mensaje: text,
         modelo: currentModel,
