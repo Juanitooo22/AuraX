@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AuraX — EternionX</title>
+<title>AuraX</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
@@ -13,11 +13,11 @@
   --bg:#f7f8fc;
   --white:#ffffff;
   --sidebar:#0d1117;
-  --sb-border:#1a2030;
-  --sb-hover:#161c28;
-  --sb-active:#1a2540;
-  --sb-text:#c9d1e0;
-  --sb-muted:#4a5568;
+  --sb-border:#232b3d;
+  --sb-hover:#1c2434;
+  --sb-active:#22314f;
+  --sb-text:#e2e8f5;
+  --sb-muted:#8b96ad;
   --blue:#1a6bff;
   --blue-dark:#0f4fd4;
   --blue-light:#e8f0ff;
@@ -31,7 +31,6 @@
 
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--fb);overflow:hidden}
 
-/* SHELL */
 .shell{display:flex;height:100vh;width:100vw}
 
 /* SIDEBAR */
@@ -64,29 +63,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 }
 .new-chat-btn:hover{background:var(--blue-dark)}
 
-/* MODEL SELECTOR */
-.model-selector{padding:10px 14px;flex-shrink:0}
-.model-label{font-size:10px;font-weight:600;color:var(--sb-muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
-.model-options{display:flex;flex-direction:column;gap:6px}
-.model-option{
-  display:flex;align-items:center;gap:10px;
-  padding:9px 10px;border-radius:9px;cursor:pointer;
-  border:1px solid transparent;transition:all 0.15s;
-}
-.model-option:hover{background:var(--sb-hover)}
-.model-option.selected{background:var(--sb-active);border-color:rgba(26,107,255,0.3)}
-.model-icon{
-  width:30px;height:30px;border-radius:8px;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;
-}
-.model-icon.eternionx{background:linear-gradient(135deg,#1a6bff,#7c3aed)}
-.model-icon.qwen{background:linear-gradient(135deg,#0891b2,#06b6d4)}
-.model-info{min-width:0}
-.model-name{font-size:12.5px;font-weight:600;color:#fff;white-space:nowrap}
-.model-desc{font-size:10.5px;color:var(--sb-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.model-check{margin-left:auto;flex-shrink:0;opacity:0}
-.model-option.selected .model-check{opacity:1}
-
 /* SECTION LABEL */
 .sb-label{font-size:10px;font-weight:600;color:var(--sb-muted);letter-spacing:1.1px;text-transform:uppercase;padding:10px 18px 4px;flex-shrink:0}
 
@@ -98,12 +74,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .chat-item{display:flex;align-items:center;border-radius:8px;cursor:pointer;transition:background 0.15s;position:relative}
 .chat-item:hover{background:var(--sb-hover)}
 .chat-item.active{background:var(--sb-active)}
-.chat-item-name{flex:1;font-size:12.5px;color:var(--sb-text);padding:8px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
-.chat-item.active .chat-item-name{color:#fff}
+.chat-item-name{flex:1;font-size:13px;color:var(--sb-text);padding:8px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.chat-item.active .chat-item-name{color:#fff;font-weight:500}
 .chat-item-actions{display:none;gap:2px;padding-right:6px;flex-shrink:0}
 .chat-item:hover .chat-item-actions,.chat-item.active .chat-item-actions{display:flex}
 .ci-btn{width:24px;height:24px;border-radius:5px;border:none;background:transparent;color:var(--sb-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.1s}
-.ci-btn:hover{background:rgba(255,255,255,0.08);color:#fff}
+.ci-btn:hover{background:rgba(255,255,255,0.1);color:#fff}
 .ci-btn.del:hover{color:#ff6b6b}
 
 /* PROFILE FOOTER */
@@ -119,14 +95,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   font-family:var(--fh);font-size:14px;font-weight:700;color:#fff;flex-shrink:0;
 }
 .profile-info{min-width:0;flex:1}
-.profile-name{font-size:12.5px;color:#fff;font-weight:500}
-.profile-sub{font-size:10.5px;color:var(--sb-muted)}
+.profile-name{font-size:13px;color:#fff;font-weight:500}
+.profile-sub{font-size:11px;color:var(--sb-muted)}
 .online-dot{width:7px;height:7px;border-radius:50%;background:#22d36f;box-shadow:0 0 5px #22d36f;flex-shrink:0}
 
 /* PROFILE MENU */
 .profile-menu{
   position:absolute;bottom:60px;left:10px;right:10px;
-  background:#1a2030;border:1px solid var(--sb-border);
+  background:#1c2434;border:1px solid var(--sb-border);
   border-radius:10px;padding:4px;z-index:50;
   display:none;box-shadow:0 8px 24px rgba(0,0,0,0.4);
 }
@@ -139,29 +115,73 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 }
 .pm-item:hover{background:var(--sb-hover);color:#fff}
 
-/* TOGGLE BTN */
-.toggle-btn{
-  position:fixed;top:12px;left:12px;z-index:100;
-  width:34px;height:34px;border-radius:9px;
-  border:1px solid #1e2535;background:#0d1117;
-  color:#8899aa;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  transition:color 0.15s,border-color 0.15s;
-}
-.toggle-btn:hover{color:#fff;border-color:#2a3550}
-
 /* MAIN */
 .main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--white);position:relative}
 
 /* TOPBAR */
 .topbar{
   height:54px;border-bottom:1px solid var(--border);
-  display:flex;align-items:center;padding:0 20px 0 56px;gap:10px;
+  display:flex;align-items:center;padding:0 20px;gap:12px;
   flex-shrink:0;background:var(--white);
 }
-.tb-title{font-family:var(--fh);font-size:14px;font-weight:600;color:var(--text)}
-.tb-sep{width:1px;height:14px;background:var(--border)}
-.tb-sub{font-size:12px;color:var(--muted);font-style:italic}
+
+/* TOGGLE BTN — ahora en el topbar */
+.toggle-btn{
+  width:32px;height:32px;border-radius:8px;
+  border:1px solid var(--border);background:var(--white);
+  color:var(--muted);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.15s;flex-shrink:0;
+}
+.toggle-btn:hover{color:var(--blue);border-color:var(--blue);background:var(--blue-light)}
+
+.tb-title{font-family:var(--fh);font-size:15px;font-weight:600;color:var(--text)}
+
+/* MODEL DROPDOWN EN TOPBAR */
+.model-dropdown{position:relative}
+.model-dd-btn{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 12px;border:1px solid var(--border);border-radius:9px;
+  background:var(--white);cursor:pointer;font-family:var(--fb);
+  font-size:13px;color:var(--text);transition:all 0.15s;
+}
+.model-dd-btn:hover{border-color:var(--blue);background:var(--blue-light)}
+.model-dd-icon{
+  width:20px;height:20px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.model-dd-name{font-weight:600}
+.model-dd-caret{color:var(--muted);transition:transform 0.2s}
+.model-dropdown.open .model-dd-caret{transform:rotate(180deg)}
+
+.model-dd-menu{
+  position:absolute;top:calc(100% + 6px);left:0;
+  background:var(--white);border:1px solid var(--border);
+  border-radius:12px;padding:6px;z-index:100;width:280px;
+  display:none;box-shadow:0 12px 32px rgba(0,0,0,0.12);
+}
+.model-dropdown.open .model-dd-menu{display:block}
+.model-dd-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px;border-radius:9px;cursor:pointer;
+  transition:background 0.12s;
+}
+.model-dd-item:hover{background:var(--bg)}
+.model-dd-item.selected{background:var(--blue-light)}
+.mdi-icon{
+  width:32px;height:32px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.mdi-info{flex:1;min-width:0}
+.mdi-name{font-size:13px;font-weight:600;color:var(--text)}
+.mdi-desc{font-size:11px;color:var(--muted);margin-top:1px}
+.mdi-check{opacity:0;color:var(--blue);flex-shrink:0}
+.model-dd-item.selected .mdi-check{opacity:1}
+
+.icon-eternionx{background:linear-gradient(135deg,#1a6bff,#7c3aed)}
+.icon-kromax{background:linear-gradient(135deg,#f59e0b,#ef4444)}
+.icon-finex{background:linear-gradient(135deg,#10b981,#0891b2)}
+
 .tb-dev{margin-left:auto;font-size:11px;color:var(--muted)}
 .tb-dev span{color:var(--blue);font-weight:600}
 
@@ -195,7 +215,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 }
 .chip:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-light)}
 
-/* MESSAGES */
+/* MSG ROWS */
 .msg-row{
   display:flex;padding:5px 24px;gap:10px;
   animation:fu 0.2s ease;max-width:860px;margin:0 auto;width:100%;
@@ -246,7 +266,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   transition:all 0.15s;flex-shrink:0;
 }
 .input-btn:hover{background:var(--border);color:var(--text)}
-.input-btn.active{color:var(--blue)}
 .input-wrap textarea{
   flex:1;background:transparent;border:none;outline:none;
   color:var(--text);font-family:var(--fb);font-size:14px;
@@ -281,7 +300,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .modal-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
 .modal-body{padding:20px 24px;overflow-y:auto;flex:1}
 
-/* SETTINGS SECTIONS */
 .setting-group{margin-bottom:20px}
 .setting-group label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
 .setting-input{
@@ -311,7 +329,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 }
 .modal-save:hover{background:var(--blue-dark)}
 
-/* MODEL CARDS EN MODAL */
 .model-cards{display:flex;flex-direction:column;gap:10px}
 .model-card{
   display:flex;align-items:center;gap:12px;
@@ -324,15 +341,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   width:44px;height:44px;border-radius:12px;
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
 }
-.mc-icon.eternionx{background:linear-gradient(135deg,#1a6bff,#7c3aed)}
-.mc-icon.qwen{background:linear-gradient(135deg,#0891b2,#06b6d4)}
 .mc-info{flex:1}
 .mc-name{font-family:var(--fh);font-size:14px;font-weight:600;color:var(--text)}
 .mc-desc{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4}
 .mc-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s}
 .model-card.selected .mc-check{background:var(--blue);border-color:var(--blue)}
 
-/* RENAME MODAL */
 .rename-modal{background:#fff;border-radius:14px;padding:24px;width:320px;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
 .rename-modal h3{font-family:var(--fh);font-size:15px;font-weight:600;margin-bottom:14px}
 .rename-modal input{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;font-family:var(--fb);outline:none;color:var(--text)}
@@ -342,7 +356,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .rm-btn.cancel{background:var(--bg);color:var(--muted)}
 .rm-btn.confirm{background:var(--blue);color:#fff}
 
-/* HOW TO USE */
 .howto-section{margin-bottom:20px}
 .howto-section h4{font-family:var(--fh);font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px}
 .howto-list{display:flex;flex-direction:column;gap:6px}
@@ -353,6 +366,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   .sidebar{position:fixed;top:0;left:0;height:100%;z-index:50}
   .msg-row{padding:5px 14px}
   .bubble{max-width:85%}
+  .model-dd-menu{width:250px}
+  .tb-dev{display:none}
 }
 </style>
 </head>
@@ -378,7 +393,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
       </svg>
       <div>
         <div class="sb-brand">AuraX</div>
-        <div class="sb-dev">by EternionX</div>
+        <div class="sb-dev">by Juanito</div>
       </div>
     </div>
 
@@ -387,37 +402,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
       Nuevo chat
     </button>
 
-    <!-- MODEL SELECTOR -->
-    <div class="model-selector">
-      <div class="model-label">Modelo</div>
-      <div class="model-options">
-        <div class="model-option selected" id="opt-eternionx" onclick="selectModel('eternionx')">
-          <div class="model-icon eternionx">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          </div>
-          <div class="model-info">
-            <div class="model-name">EternionX</div>
-            <div class="model-desc">Llama · Búsqueda web</div>
-          </div>
-          <svg class="model-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1a6bff" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>
-        <div class="model-option" id="opt-qwen" onclick="selectModel('qwen')">
-          <div class="model-icon qwen">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-          </div>
-          <div class="model-info">
-            <div class="model-name">Qwen</div>
-            <div class="model-desc">General · Rápido</div>
-          </div>
-          <svg class="model-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1a6bff" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>
-      </div>
-    </div>
-
     <div class="sb-label">Recientes</div>
     <div class="chat-list" id="chatList"></div>
 
-    <!-- PROFILE -->
+    <!-- PROFILE MENU -->
     <div class="profile-menu" id="profileMenu">
       <div class="pm-item" onclick="openSettings('general')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
@@ -437,7 +425,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
       <div class="profile-av" id="profileAv">J</div>
       <div class="profile-info">
         <div class="profile-name" id="profileName">Juanito</div>
-        <div class="profile-sub">Pro · EternionX</div>
+        <div class="profile-sub">Pro · AuraX</div>
       </div>
       <div class="online-dot"></div>
     </div>
@@ -447,15 +435,56 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
 <!-- MAIN -->
 <main class="main" id="mainArea">
-  <button class="toggle-btn" onclick="toggleSidebar()">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-  </button>
 
   <div class="topbar">
+    <button class="toggle-btn" onclick="toggleSidebar()" title="Mostrar/ocultar panel">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+    </button>
+
     <span class="tb-title">AuraX</span>
-    <div class="tb-sep"></div>
-    <span class="tb-sub" id="topbarModel">EternionX · Búsqueda web activa</span>
-    <div class="tb-dev">Desarrollado por <span>Juanitoo</span></div>
+
+    <!-- MODEL DROPDOWN -->
+    <div class="model-dropdown" id="modelDropdown">
+      <button class="model-dd-btn" onclick="toggleModelDropdown(event)">
+        <div class="model-dd-icon" id="ddIcon"></div>
+        <span class="model-dd-name" id="ddName">EternionX</span>
+        <svg class="model-dd-caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="model-dd-menu">
+        <div class="model-dd-item selected" id="dd-eternionx" onclick="selectModel('eternionx')">
+          <div class="mdi-icon icon-eternionx">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <div class="mdi-info">
+            <div class="mdi-name">EternionX</div>
+            <div class="mdi-desc">General · Español · Búsqueda web</div>
+          </div>
+          <svg class="mdi-check" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="model-dd-item" id="dd-kromax" onclick="selectModel('kromax')">
+          <div class="mdi-icon icon-kromax">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </div>
+          <div class="mdi-info">
+            <div class="mdi-name">KromaX</div>
+            <div class="mdi-desc">Código · Técnico · Matemáticas</div>
+          </div>
+          <svg class="mdi-check" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="model-dd-item" id="dd-finex" onclick="selectModel('finex')">
+          <div class="mdi-icon icon-finex">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          </div>
+          <div class="mdi-info">
+            <div class="mdi-name">FineX</div>
+            <div class="mdi-desc">Razonamiento · Lógica profunda</div>
+          </div>
+          <svg class="mdi-check" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="tb-dev">Desarrollado por <span>Juanito</span></div>
   </div>
 
   <div class="messages" id="messages"></div>
@@ -497,7 +526,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
     </div>
     <div class="modal-body">
 
-      <!-- GENERAL TAB -->
       <div id="panel-general">
         <div class="setting-group">
           <label>¿Cómo quieres que te llame?</label>
@@ -523,28 +551,39 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
         <button class="modal-save" onclick="saveSettings()">Guardar cambios</button>
       </div>
 
-      <!-- MODELS TAB -->
       <div id="panel-models" style="display:none">
         <div class="model-cards">
-          <div class="model-card selected" id="card-eternionx" onclick="selectModelFromModal('eternionx')">
-            <div class="mc-icon eternionx">
+          <div class="model-card selected" id="card-eternionx" onclick="selectModel('eternionx')">
+            <div class="mc-icon icon-eternionx">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
             </div>
             <div class="mc-info">
               <div class="mc-name">EternionX</div>
-              <div class="mc-desc">Modelo principal basado en Llama 3.2. Tiene búsqueda web en tiempo real con Google, Wikipedia y DuckDuckGo. Verificación con Claude Haiku para mayor precisión. Ideal para preguntas complejas, investigación y temas actuales.</div>
+              <div class="mc-desc">Modelo principal de AuraX con 12B parámetros. Excelente en español, conversación general y análisis de imágenes. Búsqueda web en tiempo real y verificación con IA. Ideal para preguntas de todo tipo.</div>
             </div>
             <div class="mc-check">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
           </div>
-          <div class="model-card" id="card-qwen" onclick="selectModelFromModal('qwen')">
-            <div class="mc-icon qwen">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <div class="model-card" id="card-kromax" onclick="selectModel('kromax')">
+            <div class="mc-icon icon-kromax">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
             </div>
             <div class="mc-info">
-              <div class="mc-name">Qwen 2.5</div>
-              <div class="mc-desc">Modelo rápido y eficiente de Alibaba con 3B parámetros. Excelente para código, matemáticas, HTML, Python y respuestas generales. Corre 100% local sin internet. Ideal para tareas técnicas y creativas.</div>
+              <div class="mc-name">KromaX</div>
+              <div class="mc-desc">Modelo técnico de AuraX con 14B parámetros. Especializado en código: Python, JavaScript, HTML, SQL, MongoDB y más. Perfecto para desarrollo, debugging y matemáticas.</div>
+            </div>
+            <div class="mc-check">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+          </div>
+          <div class="model-card" id="card-finex" onclick="selectModel('finex')">
+            <div class="mc-icon icon-finex">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            </div>
+            <div class="mc-info">
+              <div class="mc-name">FineX</div>
+              <div class="mc-desc">Modelo de razonamiento de AuraX. Piensa paso a paso antes de responder. Ideal para lógica, problemas complejos, matemáticas avanzadas y acertijos.</div>
             </div>
             <div class="mc-check">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -553,28 +592,25 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
         </div>
       </div>
 
-      <!-- HOW TO USE TAB -->
       <div id="panel-howto" style="display:none">
         <div class="howto-section">
           <h4>¿Qué puede hacer AuraX?</h4>
           <div class="howto-list">
             <div class="howto-item"><span class="howto-icon">💬</span>Responder preguntas en español e inglés sobre cualquier tema</div>
-            <div class="howto-item"><span class="howto-icon">🌐</span>Buscar información actualizada en Google, Wikipedia y más</div>
-            <div class="howto-item"><span class="howto-icon">💻</span>Crear código en HTML, CSS, JavaScript, Python, Lua y más</div>
+            <div class="howto-item"><span class="howto-icon">🌐</span>Buscar información actualizada en internet</div>
+            <div class="howto-item"><span class="howto-icon">💻</span>Crear código en HTML, CSS, JavaScript, Python y más</div>
             <div class="howto-item"><span class="howto-icon">🗄️</span>Generar pipelines y queries de MongoDB</div>
             <div class="howto-item"><span class="howto-icon">⚙️</span>Diseñar flujos de automatización para n8n</div>
             <div class="howto-item"><span class="howto-icon">🧮</span>Resolver matemáticas y problemas lógicos</div>
-            <div class="howto-item"><span class="howto-icon">📄</span>Analizar documentos, imágenes y archivos adjuntos</div>
           </div>
         </div>
         <div class="howto-section">
           <h4>Cómo usar</h4>
           <div class="howto-list">
-            <div class="howto-item"><span class="howto-icon">📎</span>Adjunta imágenes, Excel, Word o PowerPoint con el ícono de clip</div>
+            <div class="howto-item"><span class="howto-icon">🤖</span>Cambia de modelo con el selector junto al título AuraX</div>
             <div class="howto-item"><span class="howto-icon">🔍</span>Activa o desactiva la búsqueda web con el ícono de lupa</div>
-            <div class="howto-item"><span class="howto-icon">🤖</span>Cambia entre EternionX y Qwen en el panel izquierdo</div>
             <div class="howto-item"><span class="howto-icon">✏️</span>Renombra o elimina chats pasando el cursor sobre ellos</div>
-            <div class="howto-item"><span class="howto-icon">⌨️</span>Presiona Enter para enviar, Shift+Enter para nueva línea</div>
+            <div class="howto-item"><span class="howto-icon">⌨️</span>Enter para enviar · Shift+Enter para nueva línea</div>
           </div>
         </div>
       </div>
@@ -606,7 +642,18 @@ let currentModel = 'eternionx';
 let webSearchOn = true;
 let attachments = [];
 let userName = 'Juanito';
-let activeTab = 'general';
+
+const MODEL_INFO = {
+  eternionx: { name:'EternionX', desc:'General · Español · Búsqueda web',
+    icon:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+    cls:'icon-eternionx' },
+  kromax: { name:'KromaX', desc:'Código · Técnico · Matemáticas',
+    icon:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+    cls:'icon-kromax' },
+  finex: { name:'FineX', desc:'Razonamiento · Lógica profunda',
+    icon:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
+    cls:'icon-finex' }
+};
 
 const messagesEl = document.getElementById('messages');
 const inputEl = document.getElementById('input');
@@ -618,11 +665,13 @@ const renameModal = document.getElementById('renameModal');
 const renameInput = document.getElementById('renameInput');
 const profileMenu = document.getElementById('profileMenu');
 const webSearchBtn = document.getElementById('webSearchBtn');
+const modelDropdown = document.getElementById('modelDropdown');
 
 // INIT
 function init() {
   const saved = localStorage.getItem('aurax_name');
   if (saved) { userName = saved; updateProfileName(); }
+  updateModelUI();
   newChat();
 }
 
@@ -638,25 +687,33 @@ function toggleSidebar() { sidebarOpen = !sidebarOpen; sidebar.classList.toggle(
 // PROFILE MENU
 function toggleProfileMenu() { profileMenu.classList.toggle('open'); }
 document.addEventListener('click', e => {
-  if (!e.target.closest('.sb-footer') && !e.target.closest('.profile-menu')) {
-    profileMenu.classList.remove('open');
-  }
+  if (!e.target.closest('.sb-footer') && !e.target.closest('.profile-menu')) profileMenu.classList.remove('open');
+  if (!e.target.closest('.model-dropdown')) modelDropdown.classList.remove('open');
 });
 
-// MODEL
+// MODEL DROPDOWN
+function toggleModelDropdown(e) { e.stopPropagation(); modelDropdown.classList.toggle('open'); }
+
 function selectModel(m) {
   currentModel = m;
-  document.getElementById('opt-eternionx').classList.toggle('selected', m === 'eternionx');
-  document.getElementById('opt-qwen').classList.toggle('selected', m === 'qwen');
-  document.getElementById('card-eternionx').classList.toggle('selected', m === 'eternionx');
-  document.getElementById('card-qwen').classList.toggle('selected', m === 'qwen');
-  document.getElementById('topbarModel').textContent = m === 'eternionx'
-    ? 'EternionX · Búsqueda web activa'
-    : 'Qwen 2.5 · Modo rápido';
+  modelDropdown.classList.remove('open');
+  updateModelUI();
   renderMessages();
 }
 
-function selectModelFromModal(m) { selectModel(m); }
+function updateModelUI() {
+  const info = MODEL_INFO[currentModel];
+  const ddIcon = document.getElementById('ddIcon');
+  ddIcon.className = 'model-dd-icon ' + info.cls;
+  ddIcon.innerHTML = info.icon;
+  document.getElementById('ddName').textContent = info.name;
+  ['eternionx','kromax','finex'].forEach(k => {
+    const dd = document.getElementById('dd-' + k);
+    if (dd) dd.classList.toggle('selected', k === currentModel);
+    const card = document.getElementById('card-' + k);
+    if (card) card.classList.toggle('selected', k === currentModel);
+  });
+}
 
 // WEB SEARCH
 function toggleWebSearch() {
@@ -679,67 +736,47 @@ function openSettings(tab) {
   switchTab(tab || 'general');
   document.getElementById('nameInput').value = userName;
 }
-
 function closeSettings() { settingsModal.classList.remove('open'); }
-
 function switchTab(tab) {
-  activeTab = tab;
   ['general','models','howto'].forEach(t => {
     document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
     document.getElementById(`panel-${t}`).style.display = t === tab ? 'block' : 'none';
   });
 }
-
 function saveSettings() {
   const newName = document.getElementById('nameInput').value.trim();
-  if (newName) {
-    userName = newName;
-    localStorage.setItem('aurax_name', userName);
-    updateProfileName();
-  }
+  if (newName) { userName = newName; localStorage.setItem('aurax_name', userName); updateProfileName(); }
   closeSettings();
   renderMessages();
 }
-
 settingsModal.addEventListener('click', e => { if (e.target === settingsModal) closeSettings(); });
 
 // FILES
 function handleFiles(e) {
-  const files = Array.from(e.target.files);
-  files.forEach(f => {
-    attachments.push(f);
-    renderAttachments();
-  });
+  Array.from(e.target.files).forEach(f => { attachments.push(f); });
+  renderAttachments();
   e.target.value = '';
 }
-
 function renderAttachments() {
   const preview = document.getElementById('attachmentPreview');
   preview.innerHTML = '';
   attachments.forEach((f, i) => {
     const chip = document.createElement('div');
     chip.className = 'attachment-chip';
-    const icon = f.type.startsWith('image/') ? '🖼️' :
-                 f.name.endsWith('.pdf') ? '📄' :
-                 f.name.match(/xlsx?/) ? '📊' :
-                 f.name.match(/docx?/) ? '📝' :
-                 f.name.match(/pptx?/) ? '📋' : '📎';
-    chip.innerHTML = `${icon} ${f.name.length > 20 ? f.name.slice(0,20)+'…' : f.name}
-      <button onclick="removeAttachment(${i})">×</button>`;
+    const icon = f.type.startsWith('image/') ? '🖼️' : f.name.endsWith('.pdf') ? '📄' : f.name.match(/xlsx?/) ? '📊' : f.name.match(/docx?/) ? '📝' : '📎';
+    chip.innerHTML = `${icon} ${f.name.length > 20 ? f.name.slice(0,20)+'…' : f.name} <button onclick="removeAttachment(${i})">×</button>`;
     preview.appendChild(chip);
   });
 }
-
 function removeAttachment(i) { attachments.splice(i, 1); renderAttachments(); }
 
-// CHAT MANAGEMENT
+// CHATS
 function newChat() {
   const id = Date.now();
   chats.unshift({ id, name: 'Nuevo chat', history: [] });
   activateChat(id);
   renderChatList();
 }
-
 function activateChat(id) {
   activeId = id;
   attachments = [];
@@ -748,15 +785,11 @@ function activateChat(id) {
   renderMessages();
   inputEl.focus();
 }
-
 function deleteChat(id) {
   chats = chats.filter(c => c.id !== id);
-  if (activeId === id) {
-    if (chats.length === 0) newChat();
-    else activateChat(chats[0].id);
-  } else renderChatList();
+  if (activeId === id) { if (chats.length === 0) newChat(); else activateChat(chats[0].id); }
+  else renderChatList();
 }
-
 function openRename(id) {
   renameTargetId = id;
   const chat = chats.find(c => c.id === id);
@@ -764,9 +797,7 @@ function openRename(id) {
   renameModal.classList.add('open');
   setTimeout(() => { renameInput.focus(); renameInput.select(); }, 50);
 }
-
 function closeRename() { renameModal.classList.remove('open'); renameTargetId = null; }
-
 function confirmRename() {
   const val = renameInput.value.trim();
   if (!val) return;
@@ -774,11 +805,9 @@ function confirmRename() {
   if (chat) { chat.name = val; renderChatList(); }
   closeRename();
 }
-
 renameInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmRename(); if (e.key === 'Escape') closeRename(); });
 renameModal.addEventListener('click', e => { if (e.target === renameModal) closeRename(); });
 
-// RENDER CHAT LIST
 function renderChatList() {
   chatListEl.innerHTML = '';
   chats.forEach(chat => {
@@ -806,15 +835,15 @@ function renderChatList() {
   });
 }
 
-// RENDER MESSAGES
+// MESSAGES
 function renderMessages() {
   messagesEl.innerHTML = '';
   const chat = chats.find(c => c.id === activeId);
   if (!chat) return;
   if (chat.history.length === 0) {
+    const info = MODEL_INFO[currentModel];
     const w = document.createElement('div');
     w.className = 'welcome';
-    const modelName = currentModel === 'eternionx' ? 'EternionX' : 'Qwen 2.5';
     w.innerHTML = `
       <div class="welcome-icon">
         <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
@@ -831,7 +860,7 @@ function renderMessages() {
       <p>¿En qué puedo ayudarte hoy?</p>
       <div class="welcome-model">
         <div class="welcome-model-dot"></div>
-        ${modelName} activo
+        ${info.name} activo · ${info.desc}
       </div>
       <div class="chips">
         <div class="chip" onclick="sendChip(this)">¿Qué puedes hacer?</div>
@@ -846,7 +875,6 @@ function renderMessages() {
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
-// APPEND BUBBLE
 function appendBubble(role, content, animate = true) {
   const welcome = messagesEl.querySelector('.welcome');
   if (welcome) welcome.remove();
