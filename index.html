@@ -408,6 +408,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
     </div>
     <div style="position:fixed;left:320px;bottom:24px;width:40px;height:26px;border-radius:6px;opacity:0.55;pointer-events:none;background:linear-gradient(180deg,#fcd116 0%,#fcd116 33.3%,#003087 33.3%,#003087 66.6%,#ce1126 66.6%,#ce1126 100%);box-shadow:0 1px 6px rgba(0,0,0,0.12);"></div>
     <div style="position:fixed;right:72px;bottom:24px;width:40px;height:26px;border-radius:6px;opacity:0.55;pointer-events:none;background:linear-gradient(180deg,#fcd116 0%,#fcd116 33.3%,#003087 33.3%,#003087 66.6%,#ce1126 66.6%,#ce1126 100%);box-shadow:0 1px 6px rgba(0,0,0,0.12);"></div>
+    <div id="sidebarOverlay" onclick="toggleSidebar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9;"></div>
   </main>
 </div>
 
@@ -632,6 +633,10 @@ function showSaving() {
 window.toggleSidebar = () => {
   sidebarOpen = !sidebarOpen;
   document.getElementById('sidebar').classList.toggle('collapsed', !sidebarOpen);
+  const overlay = document.getElementById('sidebarOverlay');
+  if (window.innerWidth <= 640) {
+    overlay.style.display = sidebarOpen ? 'block' : 'none';
+  }
 };
 window.toggleProfileMenu = () => { document.getElementById('profileMenu').classList.toggle('open'); };
 
