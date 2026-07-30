@@ -889,7 +889,7 @@ window.sendMessage = async () => {
     const res = await fetch('https://drained-expand-implosive.ngrok-free.dev/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '1' },
-      body: JSON.stringify({ mensaje: text, modelo: currentModel, web_search: webSearchOn, chat_id: activeId, user_id: currentUser?.uid })
+      body: JSON.stringify({ mensaje: text, modelo: currentModel, web_search: webSearchOn, chat_id: activeId, user_id: currentUser?.uid, history: chat.history.slice(-6) })
     });
     const data = await res.json();
     const reply = data.respuesta;
