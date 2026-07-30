@@ -403,8 +403,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
       </div>
       <div class="input-hint">AuraX puede cometer errores · Verifica info importante</div>
     </div>
-    <div style="position:fixed;left:20px;top:50%;transform:translateY(-50%);width:60px;height:40px;border-radius:8px;opacity:0.15;pointer-events:none;background:linear-gradient(180deg,#fcd116 0%,#fcd116 33%,#003087 33%,#003087 66%,#ce1126 66%,#ce1126 100%);"></div>
-    <div style="position:fixed;right:20px;top:50%;transform:translateY(-50%);width:60px;height:40px;border-radius:8px;opacity:0.15;pointer-events:none;background:linear-gradient(180deg,#fcd116 0%,#fcd116 33%,#003087 33%,#003087 66%,#ce1126 66%,#ce1126 100%);"></div>
+    <div style="position:fixed;left:320px;bottom:24px;width:40px;height:26px;border-radius:6px;opacity:0.55;pointer-events:none;background:linear-gradient(180deg,#fcd116 0%,#fcd116 33.3%,#003087 33.3%,#003087 66.6%,#ce1126 66.6%,#ce1126 100%);box-shadow:0 1px 6px rgba(0,0,0,0.12);"></div>
+    <div style="position:fixed;right:72px;bottom:24px;width:40px;height:26px;border-radius:6px;opacity:0.55;pointer-events:none;background:linear-gradient(180deg,#fcd116 0%,#fcd116 33.3%,#003087 33.3%,#003087 66.6%,#ce1126 66.6%,#ce1126 100%);box-shadow:0 1px 6px rgba(0,0,0,0.12);"></div>
   </main>
 </div>
 
@@ -418,9 +418,15 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
     <div class="modal-tabs">
       <div class="modal-tab active" id="tab-general" onclick="switchTab('general')">General</div>
       <div class="modal-tab" id="tab-models" onclick="switchTab('models')">Modelos</div>
+      <div class="modal-tab" id="tab-limites" onclick="switchTab('limites')">Límites</div>
+      <div class="modal-tab" id="tab-privacidad" onclick="switchTab('privacidad')">Privacidad</div>
     </div>
     <div class="modal-body">
       <div id="panel-general">
+        <div class="setting-group">
+          <label>Tu nombre</label>
+          <input type="text" class="setting-input" id="nameInput" placeholder="¿Cómo quieres que te llame?" maxlength="30"/>
+        </div>
         <div class="setting-group">
           <label>Preferencias</label>
           <div class="setting-toggle">
@@ -428,7 +434,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
             <button class="toggle-switch on" id="toggleWeb" onclick="toggleWebSetting()"></button>
           </div>
         </div>
-        <button class="modal-save" onclick="closeSettings()">Cerrar</button>
+        <button class="modal-save" onclick="saveSettings()">Guardar</button>
       </div>
       <div id="panel-models" style="display:none">
         <div class="model-cards">
@@ -447,6 +453,34 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
             <div class="mc-info"><div class="mc-name">FineX</div><div class="mc-desc">Modelo de razonamiento · Piensa paso a paso · Lógica, problemas complejos y acertijos.</div></div>
             <div class="mc-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
           </div>
+        </div>
+      </div>
+      <div id="panel-limites" style="display:none">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;justify-content:space-between;padding:14px;border:1px solid #e5e7eb;border-radius:10px">
+            <span style="font-size:13px;color:#6b7280">Plan actual</span>
+            <span style="font-size:13px;font-weight:600;color:#1a6bff">Pro</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:14px;border:1px solid #e5e7eb;border-radius:10px">
+            <span style="font-size:13px;color:#6b7280">Mensajes</span>
+            <span style="font-size:13px;font-weight:600;color:#0d1117">Ilimitados</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:14px;border:1px solid #e5e7eb;border-radius:10px">
+            <span style="font-size:13px;color:#6b7280">Chats guardados</span>
+            <span style="font-size:13px;font-weight:600;color:#0d1117">Ilimitados</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:14px;border:1px solid #e5e7eb;border-radius:10px">
+            <span style="font-size:13px;color:#6b7280">Modelos disponibles</span>
+            <span style="font-size:13px;font-weight:600;color:#0d1117">3 (EternionX, KromaX, FineX)</span>
+          </div>
+        </div>
+      </div>
+      <div id="panel-privacidad" style="display:none">
+        <div style="font-size:13px;color:#6b7280;line-height:1.8;display:flex;flex-direction:column;gap:14px">
+          <p>AuraX no comparte tus conversaciones con terceros. Los mensajes se almacenan de forma segura en tu cuenta personal mediante Firebase.</p>
+          <p>Tus datos de inicio de sesion son gestionados por Google Authentication. AuraX no almacena contrasenas ni informacion de pago.</p>
+          <p>Puedes eliminar tus conversaciones en cualquier momento desde el panel lateral. Al eliminar un chat, este se borra permanentemente de nuestros servidores.</p>
+          <p>El uso de los modelos de IA es procesado en servidores privados. Ningun tercero tiene acceso a tus consultas.</p>
         </div>
       </div>
     </div>
@@ -614,11 +648,19 @@ window.toggleWebSetting = () => {
 window.openSettings = (tab) => {
   document.getElementById('profileMenu').classList.remove('open');
   document.getElementById('settingsModal').classList.add('open');
+  const nameInput = document.getElementById('nameInput');
+  if (nameInput) nameInput.value = localStorage.getItem('aurax_custom_name') || '';
   switchTab(tab || 'general');
+};
+window.saveSettings = () => {
+  const val = document.getElementById('nameInput').value.trim();
+  if (val) localStorage.setItem('aurax_custom_name', val);
+  closeSettings();
+  renderMessages();
 };
 window.closeSettings = () => document.getElementById('settingsModal').classList.remove('open');
 window.switchTab = (tab) => {
-  ['general','models'].forEach(t => {
+  ['general','models','limites','privacidad'].forEach(t => {
     document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
     document.getElementById(`panel-${t}`).style.display = t === tab ? 'block' : 'none';
   });
@@ -718,7 +760,7 @@ function renderMessages() {
   if (!chat) return;
   if (chat.history.length === 0) {
     const info = MODEL_INFO[currentModel];
-    const userName = currentUser?.displayName?.split(' ')[0] || 'Usuario';
+    const userName = localStorage.getItem('aurax_custom_name') || currentUser?.displayName?.split(' ')[0] || 'Usuario';
     const w = document.createElement('div');
     w.className = 'welcome';
     w.innerHTML = `
