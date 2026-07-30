@@ -505,7 +505,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 <!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -521,6 +521,13 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+provider.setCustomParameters({ prompt: 'select_account' });
+
+getRedirectResult(auth).then(result => {
+  if (result?.user) console.log('redirect login ok');
+}).catch(e => console.error(e));
 
 let currentUser = null;
 let chats = [];
@@ -546,7 +553,23 @@ const MODEL_INFO = {
 
 // AUTH
 window.loginWithGoogle = async () => {
-  try { await signInWithPopup(auth, provider); } catch(e) { console.error(e); }
+  try {
+    if (isIOS && isSafari) {
+      await signInWithPopup(auth, provider);
+    } else {
+      await signInWithRedirect(auth, provider);
+    }
+  } catch(e) {
+    console.error(e);
+    try {
+      await signInWithPopup(auth, provider);
+    } catch(e2) {
+      console.error(e2);
+      try {
+        await signInWithRedirect(auth, provider);
+      } catch(e3) { console.error(e3); }
+    }
+  }
 };
 
 window.logout = async () => {
