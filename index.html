@@ -276,6 +276,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
 @media(max-width:640px){
   .sidebar{position:fixed;top:0;left:0;height:100%;z-index:50}
+  .sidebar.collapsed{width:0;left:-260px}
   .msg-row{padding:5px 14px}
   .bubble{max-width:85%}
   .tb-dev{display:none}
@@ -527,6 +528,10 @@ let activeId = null;
 let renameTargetId = null;
 let isLoading = false;
 let sidebarOpen = true;
+if (window.innerWidth <= 640) {
+  sidebarOpen = false;
+  document.getElementById('sidebar').classList.add('collapsed');
+}
 let currentModel = 'eternionx';
 let webSearchOn = true;
 
@@ -599,7 +604,10 @@ function showSaving() {
 }
 
 // SIDEBAR
-window.toggleSidebar = () => { sidebarOpen = !sidebarOpen; document.getElementById('sidebar').classList.toggle('collapsed', !sidebarOpen); };
+window.toggleSidebar = () => {
+  sidebarOpen = !sidebarOpen;
+  document.getElementById('sidebar').classList.toggle('collapsed', !sidebarOpen);
+};
 window.toggleProfileMenu = () => { document.getElementById('profileMenu').classList.toggle('open'); };
 
 document.addEventListener('click', e => {
