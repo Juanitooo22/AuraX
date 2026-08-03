@@ -535,8 +535,8 @@ const MODEL_INFO = {
 // AUTH
 window.loginWithGoogle = async () => {
   try {
-    const isSafariBrowser = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    if (isSafariBrowser) {
+    const isSafariiOS = /iP(ad|hone|od)/.test(navigator.userAgent);
+    if (isSafariiOS) {
       await signInWithRedirect(auth, provider);
     } else {
       await signInWithPopup(auth, provider);
