@@ -507,8 +507,9 @@ const provider = new GoogleAuthProvider();
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 provider.setCustomParameters({ prompt: 'select_account' });
-getRedirectResult(auth).catch(e => console.error(e));
-
+getRedirectResult(auth).then(result => {
+  if (result?.user) console.log('login ok');
+}).catch(e => console.error(e));
 
 let currentUser = null;
 let chats = [];
