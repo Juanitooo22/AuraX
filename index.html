@@ -534,7 +534,10 @@ const MODEL_INFO = {
 };
 
 // AUTH
+let loginInProgress = false;
 window.loginWithGoogle = async () => {
+  if (loginInProgress) return;
+  loginInProgress = true;
   try {
     const isSafariiOS = /iP(ad|hone|od)/.test(navigator.userAgent);
     if (isSafariiOS) {
@@ -544,6 +547,8 @@ window.loginWithGoogle = async () => {
     }
   } catch(e) {
     console.error(e);
+  } finally {
+    loginInProgress = false;
   }
 };
 
