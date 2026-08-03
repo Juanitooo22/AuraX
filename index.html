@@ -510,7 +510,6 @@ provider.setCustomParameters({ prompt: 'select_account' });
 getRedirectResult(auth).then(result => {
   if (result?.user) console.log('login ok');
 }).catch(e => console.error(e));
-
 let currentUser = null;
 let chats = [];
 let activeId = null;
@@ -541,9 +540,9 @@ window.loginWithGoogle = async () => {
   try {
     const isSafariiOS = /iP(ad|hone|od)/.test(navigator.userAgent);
     if (isSafariiOS) {
-      await signInWithRedirect(auth, provider);
-    } else {
       await signInWithPopup(auth, provider);
+    } else {
+      await signInWithRedirect(auth, provider);
     }
   } catch(e) {
     console.error(e);
@@ -551,7 +550,7 @@ window.loginWithGoogle = async () => {
     loginInProgress = false;
   }
 };
-
+  
 window.logout = async () => {
   await signOut(auth);
   document.getElementById('loginScreen').style.display = 'flex';
