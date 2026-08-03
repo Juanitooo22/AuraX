@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AuraX</title>
-<style>
+<style>f
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -872,7 +872,7 @@ window.sendMessage = async () => {
       body: JSON.stringify({ mensaje: text, modelo: currentModel, web_search: webSearchOn, chat_id: activeId, user_id: currentUser?.uid, history: chat.history.slice(-6) })
     });
     const data = await res.json();
-    const reply = data.respuesta;
+    const reply = data.respuesta || data.response || 'Error: sin respuesta del servidor';
     removeTyping();
     appendBubble('ai', reply);
     chat.history.push({ role: 'assistant', content: reply });
