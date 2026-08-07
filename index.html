@@ -200,6 +200,16 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
 /* INPUT */
 .input-area{padding:12px 24px 16px;border-top:1px solid var(--border);background:var(--white);flex-shrink:0}
+.file-preview{
+  display:none;max-width:860px;margin:0 auto 8px;
+  padding:8px 12px;background:#f4f6fb;border:1.5px solid var(--blue);
+  border-radius:10px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);
+}
+.file-preview.show{display:flex}
+.file-preview-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-preview-remove{width:20px;height:20px;border-radius:5px;border:none;background:transparent;
+color:var(--muted);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
+.file-preview-remove:hover{color:#ff6b6b}
 .input-wrap{
   display:flex;align-items:flex-end;gap:8px;background:#f4f6fb;
   border:1.5px solid var(--border);border-radius:14px;padding:8px 8px 8px 12px;
@@ -385,6 +395,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
     </div>
     <div class="messages" id="messages"></div>
     <div class="input-area">
+      <div class="file-preview" id="filePreview">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        <span class="file-preview-name" id="filePreviewName"></span>
+        <button class="file-preview-remove" onclick="removeAttachment()">✕</button>
+      </div>
       <div class="input-wrap">
         <button class="input-btn" id="webSearchBtn" title="Búsqueda web" onclick="toggleWebSearch()" style="color:var(--blue)">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -857,8 +872,16 @@ window.handleFileUpload = async function (event) {
   };
   reader.readAsDataURL(file);
 
-  appendBubble('user', `📎 Archivo adjunto: ${file.name}`);
+  document.getElementById('filePreviewName').textContent = file.name;
+  document.getElementById('filePreview').classList.add('show');
   event.target.value = '';
+};
+
+window.removeAttachment = function() {
+  attachedFile = null;
+  attachedFileData = null;
+  document.getElementById('filePreview').classList.remove('show');
+  document.getElementById('filePreviewName').textContent = '';
 };
 
 window.sendChip = (el) => { document.getElementById('input').value = el.textContent; window.sendMessage(); };
@@ -918,8 +941,7 @@ window.sendMessage = async () => {
     appendBubble('ai', err);
     chat.history.push({ role: 'assistant', content: err });
   } finally {
-    attachedFile = null;
-    attachedFileData = null;
+    window.removeAttachment();
     isLoading = false;
     document.getElementById('sendBtn').disabled = false;
     inputEl.focus();
