@@ -804,6 +804,16 @@ function parseAttachmentBlock(text) {
   };
 }
 
+function parseImageBlock(text) {
+  const match = text.match(/\[IMAGEN:([^\]]+)\]\s*$/);
+  if (!match) return { text, imagePrompt: null };
+  const [, prompt] = match;
+  return {
+    text: text.replace(match[0], '').trim(),
+    imagePrompt: prompt
+  };
+}
+
 function renderMessages() {
   const messagesEl = document.getElementById('messages');
   messagesEl.innerHTML = '';
@@ -868,7 +878,14 @@ function appendBubble(role, content, animate = true) {
     row.id = 'typing-row';
   } else {
     const parsed = parseAttachmentBlock(content);
-    bubble.innerHTML = parseMarkdown(parsed.text || content);
+    const imgParsed = parseImageBlock(parsed.text || content);
+    bubble.innerHTML = parseMarkdown(imgParsed.text);
+    if (imgParsed.imagePrompt) {
+      const img = document.createElement('img');
+      img.src = `https://image.pollinations.ai/prompt/${imgParsed.imagePrompt}`;
+      img.style.cssText = 'max-width:100%;border-radius:12px;margin-top:8px;display:block';
+      bubble.appendChild(img);
+    }
     if (parsed.attachment) {
       const downloadWrap = document.createElement('div');
       downloadWrap.className = 'file-download';
