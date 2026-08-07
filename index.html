@@ -795,7 +795,7 @@ function parseMarkdown(text) {
 }
 
 function parseAttachmentBlock(text) {
-  const match = text.match(/\[ARCHIVO:([^:\]]+):([^:\]]+):(.*?)\]\s*$/s);
+  const match = text.match(/\[ARCHIVO:([^:\]]+):([^:\]]+):([\s\S]*?)\](\s*)$/);
   if (!match) return { text, attachment: null };
   const [, type, name, content] = match;
   return {
