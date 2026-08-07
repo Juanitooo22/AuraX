@@ -43,13 +43,23 @@ def web_search(query):
 
 def needs_search(message):
     msg = message.lower().strip()
-    no_search = ['hola', 'hello', 'hi ', 'buenos', 'buenas', 'gracias', 'bye', 'adios', 'chao']
-    if any(msg.startswith(k) for k in no_search) and len(msg) < 20:
-        return False
-    import re
-    if re.match(r'^[\d\s\+\-\*\/\(\)\=\%]+$', msg):
-        return False
-    return True
+    search_keywords = [
+        'busca', 'buscar', 'buscame', 'búscame',
+        'investiga', 'investigar', 'investígame',
+        'encuentra', 'encontrar', 'encuéntrame', 'encuentrame',
+        'explora', 'explorar', 'explórame',
+        'examina', 'examinar', 'examíname',
+        'rastrear', 'rastrea', 'rastreame',
+        'averigua', 'averiguar', 'averíguame', 'averiguame',
+        'busqueda', 'búsqueda',
+        'indaga', 'indagar',
+        'consulta', 'consultar',
+        'revisa', 'revisar',
+        'checa', 'checar',
+    ]
+    if any(k in msg for k in search_keywords):
+        return True
+    return False
 
 @app.route('/chat', methods=['POST'])
 def chat():
