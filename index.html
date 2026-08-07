@@ -200,7 +200,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
 /* INPUT */
 .input-area{padding:12px 24px 16px;border-top:1px solid var(--border);background:var(--white);flex-shrink:0}
-.file-download{margin-top:8px}
+.file-download{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px}
 .file-download-btn{border:none;background:var(--blue);color:#fff;border-radius:8px;padding:7px 10px;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .file-download-btn:hover{background:var(--blue-dark)}
 .file-preview{
@@ -794,14 +794,15 @@ function parseMarkdown(text) {
     .replace(/\n/g, '<br>');
 }
 
-function parseAttachmentBlock(text) {
-  const match = text.match(/\[ARCHIVO:([^:\]]+):([^:\]]+):([\s\S]*?)\](\s*)$/);
-  if (!match) return { text, attachment: null };
-  const [, type, name, content] = match;
-  return {
-    text: text.replace(match[0], '').trim(),
-    attachment: { type, name, content }
-  };
+function parseAttachmentBlocks(text) {
+  const regex = /\[ARCHIVO:([^:\]]+):([^:\]]+):([\s\S]*?)\]/g;
+  const attachments = [];
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    attachments.push({ type: match[1], name: match[2], content: match[3] });
+  }
+  const cleanText = text.replace(/\[ARCHIVO:[^\]]+:[^\]]+:[\s\S]*?\]/g, '').trim();
+  return { text: cleanText, attachments };
 }
 
 function parseImageBlock(text) {
@@ -877,7 +878,7 @@ function appendBubble(role, content, animate = true) {
     bubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
     row.id = 'typing-row';
   } else {
-    const parsed = parseAttachmentBlock(content);
+    const parsed = parseAttachmentBlocks(content);
     const imgParsed = parseImageBlock(parsed.text || content);
     bubble.innerHTML = parseMarkdown(imgParsed.text);
     if (imgParsed.imagePrompt) {
@@ -886,15 +887,32 @@ function appendBubble(role, content, animate = true) {
       img.style.cssText = 'max-width:100%;border-radius:12px;margin-top:8px;display:block';
       bubble.appendChild(img);
     }
-    if (parsed.attachment) {
+    if (parsed.attachments.length > 0) {
       const downloadWrap = document.createElement('div');
       downloadWrap.className = 'file-download';
-      const downloadBtn = document.createElement('button');
-      downloadBtn.className = 'file-download-btn';
-      downloadBtn.type = 'button';
-      downloadBtn.textContent = `⬇ Descargar ${parsed.attachment.name}`;
-      downloadBtn.addEventListener('click', () => window.downloadGeneratedFile(parsed.attachment));
-      downloadWrap.appendChild(downloadBtn);
+      parsed.attachments.forEach(att => {
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'file-download-btn';
+        downloadBtn.type = 'button';
+        downloadBtn.textContent = `⬇ Descargar ${att.name}`;
+        downloadBtn.addEventListener('click', () => window.downloadGeneratedFile(att));
+        downloadWrap.appendChild(downloadBtn);
+
+        if (att.name.endsWith('.html')) {
+          const previewBtn = document.createElement('button');
+          previewBtn.className = 'file-download-btn';
+          previewBtn.type = 'button';
+          previewBtn.style.marginLeft = '6px';
+          previewBtn.style.background = '#10b981';
+          previewBtn.textContent = '👁 Ver preview';
+          previewBtn.addEventListener('click', () => {
+            const blob = new Blob([att.content], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+          });
+          downloadWrap.appendChild(previewBtn);
+        }
+      });
       bubble.appendChild(downloadWrap);
     }
   }
