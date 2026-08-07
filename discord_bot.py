@@ -2,6 +2,9 @@ import discord
 import requests
 import os
 import time
+import base64
+import re
+import io
 from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -10,8 +13,8 @@ load_dotenv('/workspace/AuraX/.env')
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 AURAX_URL = 'http://localhost:5000/chat'
+GENERATE_FILE_URL = 'http://localhost:5000/generate-file'
 
-# Firebase
 cred = credentials.Certificate('/workspace/AuraX/firebase-credentials.json')
 firebase_admin.initialize_app(cred)
 db = firestore.client()
@@ -21,6 +24,23 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 
 thread_histories = {}
+SUPPORTED_EXTENSIONS = ['.pdf', '.txt', '.docx', '.jpg', '.jpeg', '.png', '.gif', '.webp']
+
+def parse_attachment_block(text):
+    match = re.search(r'\[ARCHIVO:([^:\]]+):([^:\]]+):([\s\S]*?)\]\s*$', text)
+    if not match:
+        return text, None
+    file_type, file_name, content = match.groups()
+    clean_text = text[:match.start()].strip()
+    return clean_text, {'type': file_type, 'name': file_name, 'content': content}
+
+def parse_image_block(text):
+    match = re.search(r'\[IMAGEN:([^\]]+)\]\s*$', text)
+    if not match:
+        return text, None
+    prompt = match.group(1)
+    clean_text = text[:match.start()].strip()
+    return clean_text, prompt
 
 @client.event
 async def on_ready():
@@ -30,60 +50,118 @@ async def on_ready():
 async def on_message(message):
     if message.author == client.user:
         return
-    if client.user.mentioned_in(message) or isinstance(message.channel, discord.DMChannel):
-        text = message.content.replace(f'<@{client.user.id}>', '').strip()
-        if not text:
-            return
+    if not (client.user.mentioned_in(message) or isinstance(message.channel, discord.DMChannel)):
+        return
 
-        user_id = str(message.author.id)
-        username = message.author.display_name
+    text = message.content.replace(f'<@{client.user.id}>', '').strip()
+    user_id = str(message.author.id)
+    username = message.author.display_name
 
-        if message.reference:
-            thread_id = str(message.reference.message_id)
-            if thread_id not in thread_histories:
-                try:
-                    ref_msg = await message.channel.fetch_message(message.reference.message_id)
-                    thread_histories[thread_id] = [
-                        {'role': 'assistant' if ref_msg.author == client.user else 'user',
-                         'content': ref_msg.content}
-                    ]
-                except:
-                    thread_histories[thread_id] = []
-        else:
-            thread_id = str(message.id)
-            thread_histories[thread_id] = []
+    file_data = None
+    file_name = None
+    file_type = None
 
-        async with message.channel.typing():
+    if message.attachments:
+        attachment = message.attachments[0]
+        ext = os.path.splitext(attachment.filename)[1].lower()
+        if ext in SUPPORTED_EXTENSIONS:
             try:
-                res = requests.post(AURAX_URL, json={
-                    'mensaje': text,
-                    'user_id': user_id,
-                    'chat_id': thread_id,
-                    'history': thread_histories[thread_id]
-                }, timeout=300)
-                reply = res.json().get('respuesta', 'Error al responder')
-
-                thread_histories[thread_id].append({'role': 'user', 'content': f"{username}: {text}"})
-                thread_histories[thread_id].append({'role': 'assistant', 'content': reply})
-
-                if len(thread_histories[thread_id]) > 20:
-                    thread_histories[thread_id] = thread_histories[thread_id][-20:]
-
-                # Guardar en Firebase
-                try:
-                    doc_ref = db.collection('discord').document(user_id).collection('chats').document(thread_id)
-                    doc_ref.set({
-                        'username': username,
-                        'updatedAt': int(time.time() * 1000),
-                        'history': thread_histories[thread_id]
-                    }, merge=True)
-                except Exception as fe:
-                    print(f'Firebase error: {fe}')
-
-                if len(reply) > 2000:
-                    reply = reply[:1997] + '...'
-                await message.reply(reply)
+                file_bytes = await attachment.read()
+                file_data = base64.b64encode(file_bytes).decode('utf-8')
+                file_name = attachment.filename
+                type_map = {'.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.png':'image/png',
+                           '.gif':'image/gif', '.webp':'image/webp', '.pdf':'application/pdf',
+                           '.txt':'text/plain', '.docx':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}
+                file_type = type_map.get(ext, '')
             except Exception as e:
-                await message.reply(f'Error: {str(e)}')
+                print(f'Error leyendo adjunto: {e}')
+
+    if not text and not file_data:
+        return
+
+    if message.reference:
+        thread_id = str(message.reference.message_id)
+        if thread_id not in thread_histories:
+            try:
+                ref_msg = await message.channel.fetch_message(message.reference.message_id)
+                thread_histories[thread_id] = [
+                    {'role': 'assistant' if ref_msg.author == client.user else 'user',
+                     'content': ref_msg.content}
+                ]
+            except:
+                thread_histories[thread_id] = []
+    else:
+        thread_id = str(message.id)
+        thread_histories[thread_id] = []
+
+    async with message.channel.typing():
+        try:
+            payload = {
+                'mensaje': text or f'Analiza este archivo: {file_name}',
+                'user_id': user_id,
+                'chat_id': thread_id,
+                'history': thread_histories[thread_id]
+            }
+            if file_data:
+                payload['file_data'] = file_data
+                payload['file_name'] = file_name
+                payload['file_type'] = file_type
+
+            res = requests.post(AURAX_URL, json=payload, timeout=300)
+            reply = res.json().get('respuesta', 'Error al responder')
+
+            thread_histories[thread_id].append({'role': 'user', 'content': f"{username}: {text or file_name}"})
+            thread_histories[thread_id].append({'role': 'assistant', 'content': reply})
+
+            if len(thread_histories[thread_id]) > 20:
+                thread_histories[thread_id] = thread_histories[thread_id][-20:]
+
+            try:
+                doc_ref = db.collection('discord').document(user_id).collection('chats').document(thread_id)
+                doc_ref.set({
+                    'username': username,
+                    'updatedAt': int(time.time() * 1000),
+                    'history': thread_histories[thread_id]
+                }, merge=True)
+            except Exception as fe:
+                print(f'Firebase error: {fe}')
+
+            # Parsear bloques especiales
+            clean_text, file_block = parse_attachment_block(reply)
+            clean_text, image_prompt = parse_image_block(clean_text)
+
+            if len(clean_text) > 2000:
+                clean_text = clean_text[:1997] + '...'
+
+            discord_files = []
+
+            # Generar archivo si hay bloque
+            if file_block:
+                try:
+                    gen_res = requests.post(GENERATE_FILE_URL, json=file_block, timeout=30)
+                    if gen_res.status_code == 200:
+                        ext = file_block['type']
+                        fname = file_block['name'] if '.' in file_block['name'] else f"{file_block['name']}.{ext}"
+                        discord_files.append(discord.File(io.BytesIO(gen_res.content), filename=fname))
+                except Exception as fe:
+                    print(f'Error generando archivo: {fe}')
+
+            # Descargar imagen si hay prompt
+            if image_prompt:
+                try:
+                    img_url = f'https://image.pollinations.ai/prompt/{image_prompt}'
+                    img_res = requests.get(img_url, timeout=30)
+                    if img_res.status_code == 200:
+                        discord_files.append(discord.File(io.BytesIO(img_res.content), filename='imagen.png'))
+                except Exception as ie:
+                    print(f'Error generando imagen: {ie}')
+
+            if discord_files:
+                await message.reply(clean_text or 'Aquí tienes:', files=discord_files)
+            else:
+                await message.reply(clean_text or reply)
+
+        except Exception as e:
+            await message.reply(f'Error: {str(e)}')
 
 client.run(DISCORD_TOKEN)
