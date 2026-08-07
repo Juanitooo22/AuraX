@@ -894,7 +894,7 @@ window.downloadGeneratedFile = async function (attachment) {
   try {
     const res = await fetch('https://drained-expand-implosive.ngrok-free.dev/generate-file', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '1' },
       body: JSON.stringify({
         type: attachment.type,
         name: attachment.name,
