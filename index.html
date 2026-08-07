@@ -389,6 +389,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
         <button class="input-btn" id="webSearchBtn" title="Búsqueda web" onclick="toggleWebSearch()" style="color:var(--blue)">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </button>
+        <input type="file" id="fileInput" accept=".pdf,.txt,.doc,.docx,image/*" style="display:none" onchange="handleFileUpload(event)">
+        <button class="input-btn" title="Subir archivo" onclick="document.getElementById('fileInput').click()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        </button>
         <textarea id="input" placeholder="Escribe un mensaje…" rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
         <button class="send-btn" id="sendBtn" onclick="sendMessage()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
@@ -522,6 +526,8 @@ if (window.innerWidth <= 640) {
 }
 let currentModel = 'eternionx';
 let webSearchOn = true;
+let attachedFile = null;
+let attachedFileData = null;
 
 const MODEL_INFO = {
   eternionx: { name:'EternionX', desc:'General · Español · Búsqueda web', cls:'icon-eternionx',
@@ -840,6 +846,21 @@ function appendBubble(role, content, animate = true) {
 
 function removeTyping() { const t = document.getElementById('typing-row'); if (t) t.remove(); }
 
+window.handleFileUpload = async function (event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  attachedFile = file;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    attachedFileData = e.target?.result?.split(',')[1] || null;
+  };
+  reader.readAsDataURL(file);
+
+  appendBubble('user', `📎 Archivo adjunto: ${file.name}`);
+  event.target.value = '';
+};
+
 window.sendChip = (el) => { document.getElementById('input').value = el.textContent; window.sendMessage(); };
 window.handleKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.sendMessage(); } };
 window.autoResize = (el) => { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 150) + 'px'; };
@@ -847,7 +868,9 @@ window.autoResize = (el) => { el.style.height = 'auto'; el.style.height = Math.m
 window.sendMessage = async () => {
   const inputEl = document.getElementById('input');
   const text = inputEl.value.trim();
-  if (!text || isLoading) return;
+  const hasAttachment = !!attachedFile;
+  const messageText = text || (hasAttachment ? 'Analiza este archivo adjunto.' : '');
+  if (!messageText || isLoading) return;
   const chat = chats.find(c => c.id === activeId);
   if (!chat) return;
   inputEl.value = '';
@@ -855,17 +878,33 @@ window.sendMessage = async () => {
   isLoading = true;
   document.getElementById('sendBtn').disabled = true;
   if (chat.history.length === 0) {
-    chat.name = text.slice(0, 35) + (text.length > 35 ? '…' : '');
+    chat.name = messageText.slice(0, 35) + (messageText.length > 35 ? '…' : '');
     renderChatList();
   }
-  appendBubble('user', text);
-  chat.history.push({ role: 'user', content: text });
+  const displayText = text
+    ? (hasAttachment ? `${text}\n\n📎 Archivo adjunto: ${attachedFile.name}` : text)
+    : `📎 Archivo adjunto: ${attachedFile.name}`;
+  appendBubble('user', displayText);
+  chat.history.push({ role: 'user', content: messageText });
   appendBubble('ai', '__typing__');
   try {
+    const body = {
+      mensaje: messageText,
+      modelo: currentModel,
+      web_search: webSearchOn,
+      chat_id: activeId,
+      user_id: currentUser?.uid,
+      history: chat.history.slice(-6)
+    };
+    if (attachedFile && attachedFileData) {
+      body.file_data = attachedFileData;
+      body.file_name = attachedFile.name;
+      body.file_type = attachedFile.type;
+    }
     const res = await fetch('https://drained-expand-implosive.ngrok-free.dev/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '1' },
-      body: JSON.stringify({ mensaje: text, modelo: currentModel, web_search: webSearchOn, chat_id: activeId, user_id: currentUser?.uid, history: chat.history.slice(-6) })
+      body: JSON.stringify(body)
     });
     const data = await res.json();
     const reply = data.respuesta || data.response || 'Error: sin respuesta del servidor';
@@ -879,6 +918,8 @@ window.sendMessage = async () => {
     appendBubble('ai', err);
     chat.history.push({ role: 'assistant', content: err });
   } finally {
+    attachedFile = null;
+    attachedFileData = null;
     isLoading = false;
     document.getElementById('sendBtn').disabled = false;
     inputEl.focus();
