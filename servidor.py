@@ -2,7 +2,13 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests
 import os
+import base64
 from dotenv import load_dotenv
+
+try:
+    import fitz
+except ImportError:
+    fitz = None
 
 load_dotenv('/workspace/AuraX/.env')
 
@@ -75,9 +81,52 @@ def chat():
             search_context = get_bogota_time()
         else:
             search_context = web_search(user_message)
+    # Procesar archivo adjunto
+    file_data = data.get('file_data')
+    file_name = data.get('file_name', '')
+    file_type = data.get('file_type', '')
+
     full_message = user_message
+    if file_data:
+        try:
+            raw = base64.b64decode(file_data)
+            if 'pdf' in file_type and fitz:
+                doc = fitz.open(stream=raw, filetype='pdf')
+                texto = '\n'.join(p.get_text() for p in doc if p.get_text())
+                full_message = f"El usuario subió un PDF llamado '{file_name}':\n\n{texto[:8000]}\n\nPregunta: {user_message}"
+            elif 'text' in file_type or file_name.lower().endswith('.txt'):
+                texto = raw.decode('utf-8', errors='ignore')
+                full_message = f"El usuario subió un archivo llamado '{file_name}':\n\n{texto[:8000]}\n\nPregunta: {user_message}"
+            elif 'word' in file_type or file_name.lower().endswith('.docx'):
+                from docx import Document
+                import io
+                doc = Document(io.BytesIO(raw))
+                texto = '\n'.join([p.text for p in doc.paragraphs if p.text])
+                full_message = f"El usuario subió un Word llamado '{file_name}':\n\n{texto[:8000]}\n\nPregunta: {user_message}"
+            elif 'image' in file_type:
+                try:
+                    import tempfile, os
+                    ext = file_name.split('.')[-1] if '.' in file_name else 'jpg'
+                    with tempfile.NamedTemporaryFile(suffix=f'.{ext}', delete=False) as tmp:
+                        tmp.write(raw)
+                        tmp_path = tmp.name
+                    vision_response = requests.post('http://localhost:11434/api/generate', json={
+                        "model": "moondream",
+                        "prompt": f"Describe this image in detail in Spanish. {user_message}",
+                        "images": [file_data],
+                        "stream": False
+                    }, timeout=120)
+                    os.unlink(tmp_path)
+                    vision_result = vision_response.json().get('response', '')
+                    full_message = f"El usuario subió una imagen llamada '{file_name}'. Lo que veo en la imagen: {vision_result}\n\nPregunta del usuario: {user_message}"
+                except Exception as ve:
+                    print(f'Error visión: {ve}')
+                    full_message = f"El usuario subió una imagen llamada '{file_name}'. No pude analizarla. Pregunta: {user_message}"
+        except Exception as fe:
+            print(f'Error procesando archivo: {fe}')
+
     if search_context:
-        full_message = user_message + "\n\n[Contexto web]:\n" + search_context
+        full_message = full_message + "\n\n[Contexto web]:\n" + search_context
     conversation_history.append({"role": "user", "content": full_message})
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}] + conversation_history
