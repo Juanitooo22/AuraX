@@ -892,7 +892,7 @@ function removeTyping() { const t = document.getElementById('typing-row'); if (t
 window.downloadGeneratedFile = async function (attachment) {
   if (!attachment) return;
   try {
-    const res = await fetch('/generate-file', {
+    const res = await fetch('https://drained-expand-implosive.ngrok-free.dev/generate-file', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
