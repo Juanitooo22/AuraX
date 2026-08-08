@@ -883,7 +883,7 @@ function appendBubble(role, content, animate = true) {
     bubble.innerHTML = parseMarkdown(imgParsed.text);
     if (imgParsed.imagePrompt) {
       const img = document.createElement('img');
-      img.src = `https://image.pollinations.ai/prompt/${imgParsed.imagePrompt}`;
+      img.src = `https://drained-expand-implosive.ngrok-free.dev/generate-image?prompt=${encodeURIComponent(imgParsed.imagePrompt)}`;
       img.style.cssText = 'max-width:100%;border-radius:12px;margin-top:8px;display:block';
       bubble.appendChild(img);
     }
