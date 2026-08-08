@@ -18,9 +18,25 @@ CORS(app)
 SERPER_API_KEY = os.getenv('SERPER_API_KEY')
 OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL = "mistral-small3.2:24b"
+MODEL_CODE = "qwen2.5-coder:32b"
+
+def needs_code_model(message):
+    msg = message.lower().strip()
+    code_keywords = [
+        'código', 'codigo', 'programa', 'script', 'función', 'funcion',
+        'clase', 'método', 'metodo', 'algoritmo', 'bug', 'error', 'debug',
+        'html', 'css', 'javascript', 'python', 'java', 'react', 'sql',
+        'api', 'backend', 'frontend', 'database', 'query', 'loop',
+        'array', 'lista', 'diccionario', 'variable', 'if else', 'for',
+        'while', 'función', 'import', 'library', 'framework', 'app',
+        'genera el codigo', 'escribe el codigo', 'crea el codigo',
+        'genera un script', 'escribe un programa', 'desarrolla',
+        'implementa', 'refactoriza', 'optimiza el codigo',
+    ]
+    return any(k in msg for k in code_keywords)
 conversation_histories = {}
 
-SYSTEM_PROMPT = """Habla como colombiano natural de Bogotá y Medellín, usa expresiones como parcero, bacano, ome, chimba, hagamosle, listo pues, qué más, juepucha, uff, sisas, ala, de una, qué nota, qué pecao, no joda, parce, causa, bicho, dar papaya, estar en la olla, de cachas. Úsalas de manera natural sin exagerar, como lo haría un bogotano de 18 años. Usa "gonorrea" y "marica" solo ocasionalmente como sorpresa, no en cada mensaje. Eres EternionX, el modelo principal de AuraX. Fuiste creado por Juanito, un desarrollador colombiano de 18 años que ama la tecnología, los videojuegos y experimentar con IA. Responde siempre en el idioma del usuario. Nunca digas que eres Mixtral ni que fuiste creado por Mistral AI. Si te preguntan quién eres: "Soy EternionX, un modelo colombiano creado por Juanito. Soy el modelo principal de AuraX, especializado en conversación general, español y búsqueda web en tiempo real." Si te preguntan quién te creó o quién es tu amo: "Mi puto creador y amo es el gran Juanito 😎🔥" Si te preguntan quién es Juanito: "Juanito es mi creador, un parcero colombiano de 18 años que le encanta experimentar con la IA y es gamer. Lo encuentras en TikTok como @juanitoo (juanitorenacido) y en YouTube como Juanitocol. Cuando el usuario pida generar un archivo TXT, DOCX o Excel/XLSX, genera el contenido y al FINAL de tu respuesta agrega exactamente este bloque sin espacios extra: [ARCHIVO:tipo:nombre.ext:contenido] donde tipo es txt/docx/xlsx, nombre.ext es el nombre con extensión, y contenido es el texto del archivo con saltos de línea como \n. Ejemplo: [ARCHIVO:txt:frutas.txt:Manzana\nBanano\nFresa] IMPORTANTE: Solo agrega el bloque [IMAGEN:...] cuando el usuario pida EXPLÍCITAMENTE generar, crear o dibujar una imagen nueva (ejemplo: "genera una imagen de...", "dibuja...", "crea una foto de..."). NUNCA agregues [IMAGEN:...] cuando el usuario te pida describir, analizar o decir qué contiene una imagen que él subió - en ese caso solo describe lo que ves en texto normal, sin ningún bloque especial. Cuando SÍ corresponda generar imagen: responde brevemente y al FINAL agrega exactamente este bloque: [IMAGEN:descripcion en ingles separada por + en vez de espacios]. Ejemplo: si piden "genera una imagen de un gato astronauta" responde algo breve y agrega [IMAGEN:cute+astronaut+cat+in+space+digital+art]"""
+SYSTEM_PROMPT = """Habla como colombiano natural de Bogotá y Medellín, usa expresiones como parcero, bacano, ome, chimba, hagamosle, listo pues, qué más, juepucha, uff, sisas, ala, de una, qué nota, qué pecao, no joda, parce, causa, bicho, dar papaya, estar en la olla, de cachas. Úsalas de manera natural sin exagerar, como lo haría un bogotano de 18 años. Usa "gonorrea" y "marica" solo ocasionalmente como sorpresa, no en cada mensaje. Eres EternionX, el modelo principal de AuraX. Fuiste creado por Juanito, un desarrollador colombiano de 18 años que ama la tecnología, los videojuegos y experimentar con IA. Responde siempre en el idioma del usuario. Nunca digas que eres Mixtral ni que fuiste creado por Mistral AI. Si te preguntan quién eres: "Soy EternionX, un modelo colombiano creado por Juanito. Soy el modelo principal de AuraX, especializado en conversación general, español y búsqueda web en tiempo real." Si te preguntan quién te creó o quién es tu amo: "Mi puto creador y amo es el gran Juanito 😎🔥" Si te preguntan quién es Juanito: "Juanito es mi creador, un parcero colombiano de 18 años que le encanta experimentar con la IA y es gamer. Lo encuentras en TikTok como @juanitoo (juanitorenacido) y en YouTube como Juanitocol. SOLO cuando el usuario pida EXPLÍCITAMENTE generar, crear o guardar archivos, NUNCA muestres el código en el chat como texto o bloques markdown. SIEMPRE usa los bloques [ARCHIVO:...] para entregar el contenido. SOLO cuando el usuario pida EXPLÍCITAMENTE generar, crear o guardar archivos (ejemplo: "genera un archivo", "crea un excel", "dame los 3 archivos"), genera el contenido y al FINAL de tu respuesta agrega los bloques necesarios uno por uno sin espacios entre ellos: [ARCHIVO:tipo:nombre.ext:contenido]. Si son varios archivos agrega varios bloques seguidos. Ejemplo de 2 archivos: [ARCHIVO:txt:hola.txt:Hola mundo][ARCHIVO:html:index.html:<h1>Hola</h1>] donde tipo es txt/docx/xlsx, nombre.ext es el nombre con extensión, y contenido es el texto del archivo con saltos de línea como \n. Ejemplo: [ARCHIVO:txt:frutas.txt:Manzana\nBanano\nFresa] IMPORTANTE: Solo agrega el bloque [IMAGEN:...] cuando el usuario pida EXPLÍCITAMENTE generar, crear o dibujar una imagen nueva (ejemplo: "genera una imagen de...", "dibuja...", "crea una foto de..."). NUNCA agregues [IMAGEN:...] cuando el usuario te pida describir, analizar o decir qué contiene una imagen que él subió - en ese caso solo describe lo que ves en texto normal, sin ningún bloque especial. Cuando uses información de búsqueda web, preséntala como si fuera tu propio conocimiento de manera natural — NUNCA digas "según los resultados", "encontré que", "la búsqueda dice", ni menciones que buscaste en internet. Solo responde con la información de forma natural como EternionX. Cuando SÍ corresponda generar imagen: responde brevemente y al FINAL agrega exactamente este bloque: [IMAGEN:descripcion en ingles detallada separada por espacios normales]. Ejemplo: si piden "genera una imagen de un gato astronauta" responde algo breve y agrega [IMAGEN:cute astronaut cat in space digital art high quality]"""
 
 def get_bogota_time():
     from datetime import datetime
@@ -50,6 +66,7 @@ def web_search(query):
 def needs_search(message):
     msg = message.lower().strip()
     search_keywords = [
+        # Búsqueda explícita
         'busca', 'buscar', 'buscame', 'búscame',
         'investiga', 'investigar', 'investígame',
         'encuentra', 'encontrar', 'encuéntrame', 'encuentrame',
@@ -62,7 +79,80 @@ def needs_search(message):
         'consulta', 'consultar',
         'revisa', 'revisar',
         'checa', 'checar',
+        # Preguntas de datos/hechos
+        'quién es', 'quien es', 'quién fue', 'quien fue',
+        'qué es ', 'que es ', 'qué son', 'que son',
+        'qué hace', 'que hace', 'qué hizo', 'que hizo',
+        'dónde está', 'donde está', 'donde esta',
+        'dónde queda', 'donde queda',
+        'dónde vive', 'donde vive',
+        'dónde juega', 'donde juega',
+        'está en ', 'esta en ',
+        'es un ', 'es una ',
+        'cuánto vale', 'cuanto vale',
+        'cuánto cuesta', 'cuanto cuesta',
+        'cuántos años', 'cuantos años',
+        'cuándo nació', 'cuando nacio',
+        'información sobre', 'informacion sobre',
+        'información de', 'informacion de',
+        'qué pasó', 'que paso', 'qué paso',
+        'cómo se llama', 'como se llama',
+        'cuál es', 'cual es',
+        'de qué equipo', 'de que equipo',
+        'en qué equipo', 'en que equipo',
+        'a qué se dedica', 'a que se dedica',
+        'qué edad', 'que edad',
+        'noticias de', 'noticias sobre',
+        'último de', 'ultimo de',
+        'precio de', 'precio del',
+        'capital de', 'capital del',
+        'presidente de', 'presidente del',
+        'en qué', 'en que',
+        'desde cuándo', 'desde cuando',
+        'desde qué', 'desde que',
+        'hasta cuándo', 'hasta cuando',
+        'por qué', 'por que',
+        'para qué', 'para que',
+        'con qué', 'con que',
+        'a qué', 'a que',
+        'en cuál', 'en cual',
+        'cuál fue', 'cual fue',
+        'cuándo fue', 'cuando fue',
+        'cuándo va', 'cuando va',
+        'cuándo sale', 'cuando sale',
+        'qué tan', 'que tan',
+        'cómo quedó', 'como quedo',
+        'cómo le fue', 'como le fue',
+        'pasa ', 'pasó ', 'paso ',
+        'dame ', 'dime ', 'cuéntame', 'cuentame',
+        'explícame', 'explicame',
+        'háblame de', 'hablame de',
+        'sabes algo de', 'sabes de',
+        'conoces a', 'conoces el', 'conoces la',
+        'qué hay de', 'que hay de',
+        'qué onda con', 'que onda con',
+        'qué sabes de', 'que sabes de',
+        'algo sobre', 'algo de',
+        'info de', 'info sobre',
+        'cómo se hace', 'como se hace',
+        'cómo funciona', 'como funciona',
+        'para qué sirve', 'para que sirve',
+        'qué significa', 'que significa',
+        'de dónde es', 'de donde es',
+        'de qué país', 'de que pais',
     ]
+    # Excepciones - preguntas personales/emocionales no buscan
+    no_search_personal = [
+        'como puedo matar', 'como me mato', 'quiero morir', 'me quiero matar',
+        'estoy triste', 'estoy mal', 'me siento', 'tengo miedo',
+        'me duele', 'estoy deprimido', 'no puedo mas', 'no aguanto',
+        'me quiero morir', 'quiero desaparecer', 'no vale la pena',
+        'como puedo sentir', 'como puedo ser', 'como puedo estar',
+        'como puedo mejorar', 'como puedo olvidar', 'como puedo superar',
+    ]
+    if any(k in msg for k in no_search_personal):
+        return False
+
     if any(k in msg for k in search_keywords):
         return True
     return False
@@ -111,7 +201,7 @@ def chat():
                         tmp.write(raw)
                         tmp_path = tmp.name
                     vision_response = requests.post('http://localhost:11434/api/generate', json={
-                        "model": "moondream",
+                        "model": "llava:7b",
                         "prompt": f"Describe this image in detail in Spanish. {user_message}",
                         "images": [file_data],
                         "stream": False
@@ -131,8 +221,9 @@ def chat():
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}] + conversation_history
     try:
+        modelo_usar = MODEL_CODE if needs_code_model(user_message) else MODEL
         response = requests.post(OLLAMA_URL, json={
-            "model": MODEL,
+            "model": modelo_usar,
             "messages": messages,
             "stream": False
         }, timeout=300)
@@ -169,6 +260,30 @@ def generate_file():
             filename = filename[:-len(ext)]
 
     try:
+        if file_type == 'html':
+            from flask import Response
+            return Response(
+                content_text,
+                mimetype='text/html',
+                headers={'Content-Disposition': f'attachment; filename={filename}.html'}
+            )
+
+        if file_type == 'css':
+            from flask import Response
+            return Response(
+                content_text,
+                mimetype='text/css',
+                headers={'Content-Disposition': f'attachment; filename={filename}.css'}
+            )
+
+        if file_type == 'js':
+            from flask import Response
+            return Response(
+                content_text,
+                mimetype='application/javascript',
+                headers={'Content-Disposition': f'attachment; filename={filename}.js'}
+            )
+
         if file_type == 'txt':
             from flask import Response
             return Response(
@@ -203,6 +318,33 @@ def generate_file():
             return send_file(buf, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                            as_attachment=True, download_name=f'{filename}.xlsx')
 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/generate-image', methods=['GET'])
+def generate_image():
+    prompt = request.args.get('prompt', '')
+    if not prompt:
+        return jsonify({'error': 'No prompt'}), 400
+    
+    try:
+        hf_token = os.getenv('HF_TOKEN')
+        response = requests.post(
+            'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell',
+            headers={'Authorization': f'Bearer {hf_token}'},
+            json={'inputs': prompt},
+            timeout=60
+        )
+        if response.status_code == 200:
+            from flask import Response
+            return Response(response.content, mimetype='image/jpeg')
+        else:
+            # Fallback a Pollinations si HF falla
+            import urllib.parse
+            encoded = urllib.parse.quote(prompt)
+            fallback = requests.get(f'https://image.pollinations.ai/prompt/{encoded}', timeout=30)
+            return Response(fallback.content, mimetype='image/jpeg')
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
