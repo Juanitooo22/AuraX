@@ -5,25 +5,31 @@ import time
 import base64
 import re
 import io
+import json
 from dotenv import load_dotenv
-import firebase_admin
-from firebase_admin import credentials, firestore
 
 load_dotenv('/workspace/AuraX/.env')
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 AURAX_URL = 'http://localhost:5000/chat'
 GENERATE_FILE_URL = 'http://localhost:5000/generate-file'
+HISTORY_FILE = '/workspace/AuraX/discord_history.json'
 
-cred = credentials.Certificate('/workspace/AuraX/firebase-credentials.json')
-firebase_admin.initialize_app(cred)
-db = firestore.client()
+def load_history():
+    try:
+        with open(HISTORY_FILE, 'r') as f:
+            return json.load(f)
+    except:
+        return {}
 
-intents = discord.Intents.default()
-intents.message_content = True
-client = discord.Client(intents=intents)
+def save_history(data):
+    try:
+        with open(HISTORY_FILE, 'w') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f'Error guardando historial: {e}')
 
-thread_histories = {}
+thread_histories = load_history()
 SUPPORTED_EXTENSIONS = ['.pdf', '.txt', '.docx', '.jpg', '.jpeg', '.png', '.gif', '.webp']
 
 def parse_attachment_block(text):
@@ -41,6 +47,10 @@ def parse_image_block(text):
     prompt = match.group(1)
     clean_text = text[:match.start()].strip()
     return clean_text, prompt
+
+intents = discord.Intents.default()
+intents.message_content = True
+client = discord.Client(intents=intents)
 
 @client.event
 async def on_ready():
@@ -100,7 +110,7 @@ async def on_message(message):
                 'mensaje': text or f'Analiza este archivo: {file_name}',
                 'user_id': user_id,
                 'chat_id': thread_id,
-                'history': thread_histories[thread_id]
+                'history': thread_histories.get(thread_id, [])
             }
             if file_data:
                 payload['file_data'] = file_data
@@ -110,23 +120,15 @@ async def on_message(message):
             res = requests.post(AURAX_URL, json=payload, timeout=300)
             reply = res.json().get('respuesta', 'Error al responder')
 
-            thread_histories[thread_id].append({'role': 'user', 'content': f"{username}: {text or file_name}"})
-            thread_histories[thread_id].append({'role': 'assistant', 'content': reply})
+            thread_histories.setdefault(thread_id, [])
+            thread_histories[thread_id].append({'role': 'user', 'content': f"{username}: {text or file_name}", 'timestamp': int(time.time())})
+            thread_histories[thread_id].append({'role': 'assistant', 'content': reply, 'timestamp': int(time.time())})
 
-            if len(thread_histories[thread_id]) > 20:
-                thread_histories[thread_id] = thread_histories[thread_id][-20:]
+            if len(thread_histories[thread_id]) > 40:
+                thread_histories[thread_id] = thread_histories[thread_id][-40:]
 
-            try:
-                doc_ref = db.collection('discord').document(user_id).collection('chats').document(thread_id)
-                doc_ref.set({
-                    'username': username,
-                    'updatedAt': int(time.time() * 1000),
-                    'history': thread_histories[thread_id]
-                }, merge=True)
-            except Exception as fe:
-                print(f'Firebase error: {fe}')
+            save_history(thread_histories)
 
-            # Parsear bloques especiales
             clean_text, file_block = parse_attachment_block(reply)
             clean_text, image_prompt = parse_image_block(clean_text)
 
@@ -135,7 +137,6 @@ async def on_message(message):
 
             discord_files = []
 
-            # Generar archivo si hay bloque
             if file_block:
                 try:
                     gen_res = requests.post(GENERATE_FILE_URL, json=file_block, timeout=30)
@@ -146,7 +147,6 @@ async def on_message(message):
                 except Exception as fe:
                     print(f'Error generando archivo: {fe}')
 
-            # Descargar imagen si hay prompt
             if image_prompt:
                 try:
                     img_url = f'https://image.pollinations.ai/prompt/{image_prompt}'

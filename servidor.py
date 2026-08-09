@@ -195,19 +195,16 @@ def chat():
                 full_message = f"El usuario subió un Word llamado '{file_name}':\n\n{texto[:8000]}\n\nPregunta: {user_message}"
             elif 'image' in file_type:
                 try:
-                    import tempfile, os
-                    ext = file_name.split('.')[-1] if '.' in file_name else 'jpg'
-                    with tempfile.NamedTemporaryFile(suffix=f'.{ext}', delete=False) as tmp:
-                        tmp.write(raw)
-                        tmp_path = tmp.name
-                    vision_response = requests.post('http://localhost:11434/api/generate', json={
-                        "model": "llava:7b",
-                        "prompt": f"Describe this image in detail in Spanish. {user_message}",
-                        "images": [file_data],
+                    vision_response = requests.post('http://localhost:11434/api/chat', json={
+                        "model": "mistral-small3.2:24b",
+                        "messages": [{
+                            "role": "user",
+                            "content": f"Describe esta imagen en detalle en español. {user_message}",
+                            "images": [file_data]
+                        }],
                         "stream": False
                     }, timeout=120)
-                    os.unlink(tmp_path)
-                    vision_result = vision_response.json().get('response', '')
+                    vision_result = vision_response.json()['message']['content']
                     full_message = f"El usuario subió una imagen llamada '{file_name}'. Lo que veo en la imagen: {vision_result}\n\nPregunta del usuario: {user_message}"
                 except Exception as ve:
                     print(f'Error visión: {ve}')
