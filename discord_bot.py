@@ -28,6 +28,16 @@ def save_history(data):
             json.dump(data, f, ensure_ascii=False, indent=2)
     except Exception as e:
         print(f'Error guardando historial: {e}')
+    # Sync a Drive cada 10 mensajes
+    total = sum(len(v) for v in data.values())
+    if total % 3 == 0:
+        try:
+            import subprocess
+            subprocess.Popen(['rclone', 'copy', HISTORY_FILE, 'drive:AuraX-Historial/'], 
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print(f'Sync Drive: {total} mensajes')
+        except Exception as re:
+            print(f'Error sync Drive: {re}')
 
 thread_histories = load_history()
 SUPPORTED_EXTENSIONS = ['.pdf', '.txt', '.docx', '.jpg', '.jpeg', '.png', '.gif', '.webp']
