@@ -1,5 +1,8 @@
 import discord
 import requests
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+_executor = ThreadPoolExecutor(max_workers=4)
 import os
 import time
 import base64
@@ -116,6 +119,7 @@ async def on_message(message):
 
     async with message.channel.typing():
         try:
+            loop = asyncio.get_event_loop()
             payload = {
                 'mensaje': text or f'Analiza este archivo: {file_name}',
                 'user_id': user_id,
@@ -127,7 +131,7 @@ async def on_message(message):
                 payload['file_name'] = file_name
                 payload['file_type'] = file_type
 
-            res = requests.post(AURAX_URL, json=payload, timeout=300)
+            res = await loop.run_in_executor(_executor, lambda: requests.post(AURAX_URL, json=payload, timeout=300))
             reply = res.json().get('respuesta', 'Error al responder')
 
             thread_histories.setdefault(thread_id, [])
