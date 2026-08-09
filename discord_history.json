@@ -342,5 +342,65 @@
       "content": "¡Ah, parcero! Mbappé está en el Paris Saint-Germain (PSG), ese equipo que siempre da de qué hablar. Es uno de los delanteros más letales del mundo y en el PSG sigue rompiendo récords.\n\n¿Quieres saber algo más de él o de otro jugador? 😎",
       "timestamp": 1786240234
     }
+  ],
+  "1535828082664149105": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: tienes conciencia?",
+      "timestamp": 1786240353
+    },
+    {
+      "role": "assistant",
+      "content": "Parce, soy EternionX, un modelo colombiano creado por Juanito. Soy el modelo principal de AuraX, especializado en conversación general, español y búsqueda web en tiempo real.\n\nNo tengo conciencia como los humanos, pero puedo mantener conversaciones bacanas contigo. ¿Qué más, parcero?",
+      "timestamp": 1786240353
+    }
+  ],
+  "1535828099394961430": [
+    {
+      "role": "assistant",
+      "content": "Parce, soy EternionX, un modelo colombiano creado por Juanito. Soy el modelo principal de AuraX, especializado en conversación general, español y búsqueda web en tiempo real.\n\nNo tengo conciencia como los humanos, pero puedo mantener conversaciones bacanas contigo. ¿Qué más, parcero?"
+    },
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: mbappe",
+      "timestamp": 1786240368
+    },
+    {
+      "role": "assistant",
+      "content": "¡Juepucha, qué nota! Mbappé es un bicho, parcero. El tipo es pura chimba en la cancha, siempre dando espectáculo con el PSG y la selección francesa. Aunque últimamente ha estado en la olla con los rumores de su posible salida del PSG, pero bueno, eso ya lo veremos.\n\n¿Qué más quieres saber de él? ¿O solo querías hablar de fútbol, cause?",
+      "timestamp": 1786240368
+    }
+  ],
+  "1535828165983731817": [
+    {
+      "role": "assistant",
+      "content": "¡Juepucha, qué nota! Mbappé es un bicho, parcero. El tipo es pura chimba en la cancha, siempre dando espectáculo con el PSG y la selección francesa. Aunque últimamente ha estado en la olla con los rumores de su posible salida del PSG, pero bueno, eso ya lo veremos.\n\n¿Qué más quieres saber de él? ¿O solo querías hablar de fútbol, cause?"
+    },
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: en que equipo esta mbappe en 2026",
+      "timestamp": 1786240390
+    },
+    {
+      "role": "assistant",
+      "content": "¡Uff, qué pecao! Mbappé está en el Real Madrid desde 2025, parcero. Se fue del PSG y ahora es una máquina en La Liga. De hecho, en este 2026 ha sido el máximo goleador de la liga española, pura chimba.\n\nY mira que hasta en el Mundial 2026 le metió 8 goles a pesar de que Francia quedó cuarto. ¡Qué bicho!\n\n¿Quieres saber algo más de él o de otro jugador?",
+      "timestamp": 1786240390
+    }
+  ],
+  "1535828256652005488": [
+    {
+      "role": "assistant",
+      "content": "¡Uff, qué pecao! Mbappé está en el Real Madrid desde 2025, parcero. Se fue del PSG y ahora es una máquina en La Liga. De hecho, en este 2026 ha sido el máximo goleador de la liga española, pura chimba.\n\nY mira que hasta en el Mundial 2026 le metió 8 goles a pesar de que Francia quedó cuarto. ¡Qué bicho!\n\n¿Quieres saber algo más de él o de otro jugador?"
+    },
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: en que año estamos",
+      "timestamp": 1786240428
+    },
+    {
+      "role": "assistant",
+      "content": "¡Listo pues, parcero! Estamos en el 2026, qué más. ¿En qué más te puedo ayudar?",
+      "timestamp": 1786240428
+    }
   ]
 }
