@@ -50,6 +50,7 @@ def parse_attachment_block(text):
     if not match:
         return text, None
     file_type, file_name, content = match.groups()
+    content = content.replace('\\n', '\n')
     clean_text = text[:match.start()].strip()
     return clean_text, {'type': file_type, 'name': file_name, 'content': content}
 
@@ -143,6 +144,27 @@ async def on_message(message):
 
             save_history(thread_histories)
 
+            # Si hay codigo adjunto, pedirlo como archivo
+            if "[codigo adjunto como archivo]" in reply:
+                try:
+                    code_payload = {
+                        'mensaje': 'Dame SOLO el codigo completo sin explicaciones ni texto, solo el codigo puro',
+                        'user_id': user_id,
+                        'chat_id': thread_id,
+                        'history': thread_histories.get(thread_id, [])
+                    }
+                    code_res = await loop.run_in_executor(_executor, lambda: requests.post(AURAX_URL, json=code_payload, timeout=300))
+                    code_only = code_res.json().get('respuesta', '')
+                    import re as _re3
+                    code_blocks = _re3.findall(r'```(?:python|py|bash|js)?\n?([\s\S]*?)```', code_only)
+                    if code_blocks:
+                        code_content = '\n\n'.join(code_blocks)
+                    else:
+                        code_content = code_only
+                    discord_files.append(discord.File(io.BytesIO(code_content.encode()), filename='codigo.py'))
+                    reply = reply.replace('[codigo adjunto como archivo]', '[archivo adjunto 👆]')
+                except Exception as ce:
+                    print(f'Error obteniendo codigo: {ce}')
             clean_text, file_block = parse_attachment_block(reply)
             clean_text, image_prompt = parse_image_block(clean_text)
 
