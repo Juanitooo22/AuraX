@@ -28,7 +28,7 @@ def needs_code_model(message):
         'html', 'css', 'javascript', 'python', 'java', 'react', 'sql',
         'api', 'backend', 'frontend', 'database', 'query', 'loop',
         'array', 'lista', 'diccionario', 'variable', 'if else', 'for',
-        'while', 'función', 'import', 'library', 'framework', 'app',
+        'while', 'función', 'import', 'library', 'framework',
         'genera el codigo', 'escribe el codigo', 'crea el codigo',
         'genera un script', 'escribe un programa', 'desarrolla',
         'implementa', 'refactoriza', 'optimiza el codigo',
@@ -50,7 +50,7 @@ def web_search(query):
         response = requests.post(
             'https://google.serper.dev/search',
             headers={'X-API-KEY': SERPER_API_KEY, 'Content-Type': 'application/json'},
-            json={'q': query, 'num': 3},
+            json={'q': query.encode('utf-8').decode('utf-8'), 'num': 3},
             timeout=5
         )
         results = response.json()
@@ -60,7 +60,8 @@ def web_search(query):
             snippet = r.get('snippet', '')
             snippets.append(title + ': ' + snippet)
         return '\n'.join(snippets)
-    except:
+    except Exception as se:
+        print(f'Serper error: {se}')
         return ""
 
 def needs_search(message):
@@ -68,78 +69,58 @@ def needs_search(message):
     search_keywords = [
         # Búsqueda explícita
         'busca', 'buscar', 'buscame', 'búscame',
-        'investiga', 'investigar', 'investígame',
-        'encuentra', 'encontrar', 'encuéntrame', 'encuentrame',
-        'explora', 'explorar', 'explórame',
-        'examina', 'examinar', 'examíname',
-        'rastrear', 'rastrea', 'rastreame',
-        'averigua', 'averiguar', 'averíguame', 'averiguame',
+        'investiga', 'investigar',
+        'averigua', 'averiguar',
         'busqueda', 'búsqueda',
-        'indaga', 'indagar',
-        'consulta', 'consultar',
-        'revisa', 'revisar',
-        'checa', 'checar',
-        # Preguntas de datos/hechos
+        'noticias de', 'noticias sobre',
+        'info de', 'info sobre',
+        'información sobre', 'informacion sobre',
+        'información de', 'informacion de',
+        # Quién
         'quién es', 'quien es', 'quién fue', 'quien fue',
+        'quién gana', 'quien gana', 'quién ganó', 'quien gano',
+        'quién juega', 'quien juega', 'quién está', 'quien esta',
+        # Qué
         'qué es ', 'que es ', 'qué son', 'que son',
-        'qué hace', 'que hace', 'qué hizo', 'que hizo',
+        'qué pasó', 'que pasó', 'que paso',
+        'qué edad', 'que edad',
+        'qué año', 'que año', 'en qué año', 'en que año',
+        'qué significa', 'que significa',
+        'qué hay', 'que hay',
+        'qué equipo', 'que equipo',
+        'qué precio', 'que precio',
+        # Cuándo
+        'cuándo es', 'cuando es',
+        'cuándo fue', 'cuando fue',
+        'cuándo sale', 'cuando sale',
+        'cuándo juega', 'cuando juega',
+        'cuándo nació', 'cuando nacio',
+        # Dónde
         'dónde está', 'donde está', 'donde esta',
         'dónde queda', 'donde queda',
+        'dónde es', 'donde es',
         'dónde vive', 'donde vive',
         'dónde juega', 'donde juega',
-        'está en ', 'esta en ',
-        'es un ', 'es una ',
+        # Cuánto
         'cuánto vale', 'cuanto vale',
         'cuánto cuesta', 'cuanto cuesta',
         'cuántos años', 'cuantos años',
-        'cuándo nació', 'cuando nacio',
-        'información sobre', 'informacion sobre',
-        'información de', 'informacion de',
-        'qué pasó', 'que paso', 'qué paso',
-        'cómo se llama', 'como se llama',
-        'cuál es', 'cual es',
-        'de qué equipo', 'de que equipo',
-        'en qué equipo', 'en que equipo',
-        'a qué se dedica', 'a que se dedica',
-        'qué edad', 'que edad',
-        'noticias de', 'noticias sobre',
-        'último de', 'ultimo de',
         'precio de', 'precio del',
+        # Cuál
+        'cuál es', 'cual es',
+        'cuál fue', 'cual fue',
+        # Otros útiles
         'capital de', 'capital del',
         'presidente de', 'presidente del',
-        'en qué', 'en que',
-        'desde cuándo', 'desde cuando',
-        'desde qué', 'desde que',
-        'hasta cuándo', 'hasta cuando',
-        'por qué', 'por que',
-        'para qué', 'para que',
-        'con qué', 'con que',
-        'a qué', 'a que',
-        'en cuál', 'en cual',
-        'cuál fue', 'cual fue',
-        'cuándo fue', 'cuando fue',
-        'cuándo va', 'cuando va',
-        'cuándo sale', 'cuando sale',
-        'qué tan', 'que tan',
         'cómo quedó', 'como quedo',
         'cómo le fue', 'como le fue',
-        'pasa ', 'pasó ', 'paso ',
-        'dame ', 'dime ', 'cuéntame', 'cuentame',
-        'explícame', 'explicame',
-        'háblame de', 'hablame de',
-        'sabes algo de', 'sabes de',
-        'conoces a', 'conoces el', 'conoces la',
-        'qué hay de', 'que hay de',
-        'qué onda con', 'que onda con',
-        'qué sabes de', 'que sabes de',
-        'algo sobre', 'algo de',
-        'info de', 'info sobre',
-        'cómo se hace', 'como se hace',
-        'cómo funciona', 'como funciona',
-        'para qué sirve', 'para que sirve',
-        'qué significa', 'que significa',
+        'último de', 'ultimo de',
         'de dónde es', 'de donde es',
         'de qué país', 'de que pais',
+        'a qué se dedica', 'a que se dedica',
+        'háblame de', 'hablame de',
+        'sabes algo de',
+        'qué onda con', 'que onda con',
     ]
     # Excepciones - preguntas personales/emocionales no buscan
     no_search_personal = [
@@ -166,7 +147,7 @@ def chat():
     conversation_history = [{"role": m["role"], "content": m["content"]} for m in history_from_client if m.get("role") in ["user","assistant"]]
     search_context = ""
     if needs_search(user_message):
-        _hora_keywords = ['hora', 'horas', 'que hora', 'qué hora', 'tiempo actual']
+        _hora_keywords = ['hora', 'horas', 'que hora', 'qué hora', 'tiempo actual', 'que dia', 'qué dia', 'que fecha', 'qué fecha', 'que año', 'qué año']
         if any(k in user_message.lower() for k in _hora_keywords):
             search_context = get_bogota_time()
         else:
@@ -216,15 +197,25 @@ def chat():
         full_message = full_message + "\n\n[Contexto web]:\n" + search_context
     conversation_history.append({"role": "user", "content": full_message})
 
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + conversation_history
+    from datetime import datetime
+    import pytz
+    tz = pytz.timezone("America/Bogota")
+    now = datetime.now(tz)
+    dias = ["lunes","martes","miércoles","jueves","viernes","sábado","domingo"]
+    meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"]
+    fecha_actual = f"{dias[now.weekday()]} {now.day} de {meses[now.month-1]} de {now.year}, {now.strftime('%I:%M %p')} hora Colombia"
+    system_con_fecha = SYSTEM_PROMPT + f"\n\n[Contexto interno]: Hoy es {fecha_actual}. Usa esta fecha SOLO si te preguntan por ella, no la menciones en otras respuestas."
+    messages = [{"role": "system", "content": system_con_fecha}] + conversation_history
     try:
         modelo_usar = MODEL_CODE if needs_code_model(user_message) else MODEL
         response = requests.post(OLLAMA_URL, json={
             "model": modelo_usar,
             "messages": messages,
-            "stream": False
+            "stream": False,
+            "keep_alive": -1
         }, timeout=300)
         result = response.json()
+        print('OLLAMA RESULT:', result)
         assistant_message = result['message']['content']
         conversation_history.append({"role": "assistant", "content": assistant_message})
         return jsonify({"respuesta": assistant_message, "search_used": bool(search_context)})
