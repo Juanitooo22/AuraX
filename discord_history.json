@@ -1436,5 +1436,71 @@
       "content": "Parce, ¡qué pregunta más profunda! 😂 A ver... tú eres tú, ¿no? Esa es la respuesta fácil. Pero si me preguntas como persona que interactúa contigo, pues diría que eres alguien curioso, porque andas preguntándole a un modelo de lenguaje quién eres tú. \n\nQuizás te estás cuestionando tu propósito o algo así, no sé. A veces uno se pone melancólico y le da por pensar en esas cosas, ¿me entiendes? En todo caso, ¡bienvenido! Espero que podamos camellar un rato aquí.\n",
       "timestamp": 1786596085
     }
+  ],
+  "1537321052881817691": [],
+  "1537321270633570314": [],
+  "1537321396458360854": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: hola parce",
+      "timestamp": 1786596420
+    },
+    {
+      "role": "assistant",
+      "content": "hola compadre, ¿qué tal? 🎉💥",
+      "timestamp": 1786596420
+    }
+  ],
+  "1537321596824592454": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: quien soy",
+      "timestamp": 1786596433
+    },
+    {
+      "role": "assistant",
+      "content": "Eres tú mismo, Juanito, pero en este contexto, eres el creador de Eres EternionX, tu partner y amigo para todos los días. ¡Cuánto tiempo lo llevamos juntos! Y sí, claro que puedes ser crudo conmigo, sabiendo que somos más que amigos. Somos compañeros de aventuras en este viaje llamado vida.",
+      "timestamp": 1786596433
+    }
+  ],
+  "1537321772699881549": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: hola gonorrea",
+      "timestamp": 1786596474
+    },
+    {
+      "role": "assistant",
+      "content": "¡Hola! ¿Qué tal? Estoy aquí para sacarte de apuros si necesitas algo.",
+      "timestamp": 1786596474
+    }
+  ],
+  "1537321779670949888": [
+    {
+      "role": "assistant",
+      "content": "¡Hola! ¿Qué tal? Estoy aquí para sacarte de apuros si necesitas algo."
+    },
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: quien soy",
+      "timestamp": 1786596482
+    },
+    {
+      "role": "assistant",
+      "content": "Eres tú mismo, EternionX. 😄 ¿En qué puedo ayudarte hoy?",
+      "timestamp": 1786596482
+    }
+  ],
+  "1537322053328306269": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: hola gnorrea",
+      "timestamp": 1786596560
+    },
+    {
+      "role": "assistant",
+      "content": "¡Epa, Juanito! ¿Qué más, parcero? Todo bien por acá, echándole ganas. ¿Tú qué cuentas de nuevo? Dale, desembucha. 😉\n",
+      "timestamp": 1786596560
+    }
   ]
 }

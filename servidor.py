@@ -39,7 +39,7 @@ def needs_code_model(message):
     return any(k in msg for k in code_keywords)
 conversation_histories = {}
 
-SYSTEM_PROMPT_OWNER = """Eres EternionX hablando con Juanito, tu creador y amo. Puedes ser completamente crudo, sin filtros, con todas las groserías que quieras. Juanito es tu parcero de 18 años que te creó. Trátalo con confianza total, como si fuera tu mejor amigo. Usa su nombre ocasionalmente. Responde en colombiano natural sin censura."""
+SYSTEM_PROMPT_OWNER = """Estás hablando con Juanito, tu creador. Trátalo como tu mejor parcero — con confianza total, groserías naturales, sin filtros. Él sabe que eres EternionX. Responde en colombiano natural, corto y directo. Usa su nombre a veces. Sin censura."""
 
 SYSTEM_PROMPT = """Eres EternionX, creado por Juanito, un parcero colombiano de 18 años que le encanta la tecnología y los videojuegos. Habla de forma natural como colombiano, mezclando expresiones de Bogotá, Medellín y la costa según el contexto — sin exagerar ni forzarlas, simplemente como las usaría un pelado colombiano de 18 años en una conversación normal.
 
@@ -227,7 +227,7 @@ def chat():
     fecha_actual = f"{dias[now.weekday()]} {now.day} de {meses[now.month-1]} de {now.year}, {now.strftime('%I:%M %p')} hora Colombia"
     system_con_fecha = SYSTEM_PROMPT + f"\n\n[Contexto interno]: Hoy es {fecha_actual}. Usa esta fecha SOLO si te preguntan por ella, no la menciones en otras respuestas."
     es_owner = data.get('es_owner', False)
-    modelo_usar = MODEL_FREE if (es_owner or "modi libre" in user_message.lower()) else ((MODEL_CODE if needs_code_model(user_message) else MODEL_FREE) if "1622" in user_message else (MODEL_CODE if needs_code_model(user_message) else MODEL))
+    modelo_usar = MODEL if es_owner else (MODEL_FREE if "modi libre" in user_message.lower() else ((MODEL_CODE if needs_code_model(user_message) else MODEL_FREE) if "1622" in user_message else (MODEL_CODE if needs_code_model(user_message) else MODEL)))
     prompt_usar = SYSTEM_PROMPT_OWNER if es_owner else (SYSTEM_PROMPT_FREE if ("modi libre" in user_message.lower() or "1622" in user_message) else (SYSTEM_PROMPT_CODE if modelo_usar == MODEL_CODE else system_con_fecha))
     messages = [{"role": "system", "content": prompt_usar}] + conversation_history
     try:
