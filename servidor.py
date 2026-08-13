@@ -17,7 +17,7 @@ CORS(app)
 
 SERPER_API_KEY = os.getenv('SERPER_API_KEY')
 OLLAMA_URL = "http://localhost:11434/api/chat"
-MODEL = "mistral-small3.2:24b"
+MODEL = "gemma3:27b"
 MODEL_CODE = "hf.co/bartowski/Qwen2.5-Coder-14B-Instruct-abliterated-GGUF:Q4_K_M"
 SYSTEM_PROMPT_CODE = """Eres KromaX, experto en codigo. Responde en español. SIEMPRE que generes codigo, ponlo en un bloque [ARCHIVO:py:nombre.py:codigo_completo] al final. Nunca trunces el codigo."""
 MODEL_FREE = "dolphin3:8b"
@@ -216,10 +216,10 @@ def chat():
     meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"]
     fecha_actual = f"{dias[now.weekday()]} {now.day} de {meses[now.month-1]} de {now.year}, {now.strftime('%I:%M %p')} hora Colombia"
     system_con_fecha = SYSTEM_PROMPT + f"\n\n[Contexto interno]: Hoy es {fecha_actual}. Usa esta fecha SOLO si te preguntan por ella, no la menciones en otras respuestas."
-    prompt_usar = SYSTEM_PROMPT_FREE if "1622" in user_message else (SYSTEM_PROMPT_CODE if modelo_usar == MODEL_CODE else system_con_fecha)
+    modelo_usar = MODEL_FREE if "modi libre" in user_message.lower() else ((MODEL_CODE if needs_code_model(user_message) else MODEL_FREE) if "1622" in user_message else (MODEL_CODE if needs_code_model(user_message) else MODEL))
+    prompt_usar = SYSTEM_PROMPT_FREE if ("modi libre" in user_message.lower() or "1622" in user_message) else (SYSTEM_PROMPT_CODE if modelo_usar == MODEL_CODE else system_con_fecha)
     messages = [{"role": "system", "content": prompt_usar}] + conversation_history
     try:
-        modelo_usar = (MODEL_CODE if needs_code_model(user_message) else MODEL_FREE) if "1622" in user_message else (MODEL_CODE if needs_code_model(user_message) else MODEL)
         response = requests.post(OLLAMA_URL, json={
             "model": modelo_usar,
             "messages": messages,
