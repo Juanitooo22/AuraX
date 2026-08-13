@@ -167,7 +167,7 @@ def chat():
     history_from_client = data.get("history", [])
     conversation_history = [{"role": m["role"], "content": m["content"]} for m in history_from_client if m.get("role") in ["user","assistant"]]
     search_context = ""
-    if needs_search(user_message):
+    if needs_search(user_message) or "modi libre" in user_message.lower():
         _hora_keywords = ['hora', 'horas', 'que hora', 'qué hora', 'tiempo actual', 'que dia', 'qué dia', 'que fecha', 'qué fecha', 'que año', 'qué año']
         if any(k in user_message.lower() for k in _hora_keywords):
             search_context = get_bogota_time()

@@ -27,3 +27,11 @@ sleep 3
 echo "✅ Discord bot listo"
 
 echo "🚀 AuraX completamente listo!"
+
+# Arrancar SearXNG si está instalado
+if [ -d "/workspace/searxng" ]; then
+  echo "⏳ Iniciando SearXNG..."
+  SEARXNG_SETTINGS_PATH=/etc/searxng/settings.yml python -m searx.webapp > /tmp/searxng.log 2>&1 &
+  sleep 3
+  echo "✅ SearXNG listo"
+fi
