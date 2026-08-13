@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 load_dotenv('/workspace/AuraX/.env')
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
+OWNER_ID = os.getenv('DISCORD_OWNER_ID', '')
 AURAX_URL = 'http://localhost:5000/chat'
 GENERATE_FILE_URL = 'http://localhost:5000/generate-file'
 HISTORY_FILE = '/workspace/AuraX/discord_history.json'
@@ -121,8 +122,34 @@ async def on_message(message):
     async with message.channel.typing():
         try:
             loop = asyncio.get_event_loop()
+            # Detectar si es el owner
+            is_owner = str(message.author.id) == OWNER_ID
+            print(f'DEBUG: author={message.author.id}, owner={OWNER_ID}, is_owner={is_owner}, text={repr(text)}')
+
+            # Comandos especiales del owner
+            if is_owner and text.strip().startswith('!'):
+                if text == '!estado':
+                    import requests as _req
+                    import asyncio as _asyncio
+                    health = _req.get('http://localhost:5000/health').json()
+                    await message.reply(f"✅ Servidor OK\nModelo: {health.get('model')}\nOllama corriendo")
+                    return
+                elif text == '!sync':
+                    import subprocess
+                    subprocess.Popen(['rclone', 'copy', '/workspace/AuraX/discord_history.json', 'drive:AuraX-Historial/'])
+                    await message.reply("✅ Sync a Drive iniciado")
+                    return
+                elif text == '!reiniciar':
+                    await message.reply("🔄 Reiniciando servidor...")
+                    import subprocess
+                    subprocess.Popen(['pkill', '-f', 'servidor.py'])
+                    await _asyncio.sleep(2)
+                    subprocess.Popen(['python', '/workspace/AuraX/servidor.py'])
+                    return
+
             payload = {
                 'mensaje': text or f'Analiza este archivo: {file_name}',
+                'es_owner': is_owner,
                 'user_id': user_id,
                 'chat_id': thread_id,
                 'history': thread_histories.get(thread_id, [])
