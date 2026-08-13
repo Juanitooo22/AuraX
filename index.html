@@ -780,9 +780,23 @@ function renderChatList() {
   });
 }
 
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 function parseMarkdown(text) {
-  return text
-    .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+  const codeBlocks = [];
+  text = text.replace(/```([\s\S]*?)```/g, (_, code) => {
+    const escapedCode = escapeHtml(code);
+    const placeholder = `%%CODE_BLOCK_${codeBlocks.length}%%`;
+    codeBlocks.push(`<pre><code>${escapedCode}</code></pre>`);
+    return placeholder;
+  });
+
+  text = escapeHtml(text)
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
@@ -792,6 +806,12 @@ function parseMarkdown(text) {
     .replace(/^\* (.+)$/gm, '• $1')
     .replace(/^\- (.+)$/gm, '• $1')
     .replace(/\n/g, '<br>');
+
+  codeBlocks.forEach((block, index) => {
+    text = text.replace(`%%CODE_BLOCK_${index}%%`, block);
+  });
+
+  return text;
 }
 
 function parseAttachmentBlocks(text) {
@@ -962,6 +982,8 @@ window.handleFileUpload = async function (event) {
   };
   reader.readAsDataURL(file);
 
+  const preview = document.getElementById('filePreview');
+  if (preview) preview.style.display = '';
   document.getElementById('filePreviewName').textContent = file.name;
   document.getElementById('filePreview').classList.add('show');
   event.target.value = '';
@@ -970,8 +992,16 @@ window.handleFileUpload = async function (event) {
 window.removeAttachment = function() {
   attachedFile = null;
   attachedFileData = null;
-  document.getElementById('filePreview').classList.remove('show');
-  document.getElementById('filePreviewName').textContent = '';
+  const preview = document.getElementById('filePreview');
+  const fileInput = document.getElementById('fileInput');
+  const previewName = document.getElementById('filePreviewName');
+
+  if (preview) {
+    preview.classList.remove('show');
+    preview.style.display = 'none';
+  }
+  if (previewName) previewName.textContent = '';
+  if (fileInput) fileInput.value = '';
 };
 
 window.sendChip = (el) => { document.getElementById('input').value = el.textContent; window.sendMessage(); };
