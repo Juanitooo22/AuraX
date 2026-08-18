@@ -32,19 +32,18 @@ def save_history(data):
             json.dump(data, f, ensure_ascii=False, indent=2)
     except Exception as e:
         print(f'Error guardando historial: {e}')
-    # Sync a Drive cada 10 mensajes
     total = sum(len(v) for v in data.values())
     if total % 3 == 0:
         try:
             import subprocess
-            subprocess.Popen(['rclone', 'copy', HISTORY_FILE, 'drive:AuraX-Historial/'], 
+            subprocess.Popen(['rclone', 'copy', HISTORY_FILE, 'drive:AuraX-Historial/'],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            print(f'Sync Drive: {total} mensajes')
-        except Exception as re:
-            print(f'Error sync Drive: {re}')
+        except:
+            pass
 
 thread_histories = load_history()
 SUPPORTED_EXTENSIONS = ['.pdf', '.txt', '.docx', '.jpg', '.jpeg', '.png', '.gif', '.webp']
+user_names = {}
 
 def parse_attachment_block(text):
     match = re.search(r'\[ARCHIVO:([^:\]]+):([^:\]]+):([\s\S]*?)\]\s*$', text)
@@ -52,16 +51,13 @@ def parse_attachment_block(text):
         return text, None
     file_type, file_name, content = match.groups()
     content = content.replace('\\n', '\n')
-    clean_text = text[:match.start()].strip()
-    return clean_text, {'type': file_type, 'name': file_name, 'content': content}
+    return text[:match.start()].strip(), {'type': file_type, 'name': file_name, 'content': content}
 
 def parse_image_block(text):
     match = re.search(r'\[IMAGEN:([^\]]+)\]\s*$', text)
     if not match:
         return text, None
-    prompt = match.group(1)
-    clean_text = text[:match.start()].strip()
-    return clean_text, prompt
+    return text[:match.start()].strip(), match.group(1)
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -70,6 +66,28 @@ client = discord.Client(intents=intents)
 @client.event
 async def on_ready():
     print(f'AuraX bot conectado como {client.user}')
+
+async def get_thread_history(message):
+    fetched = []
+    current = message
+    for _ in range(10):
+        if not current.reference:
+            break
+        try:
+            ref_msg = await current.channel.fetch_message(current.reference.message_id)
+            fetched.append(ref_msg)
+            current = ref_msg
+        except:
+            break
+    fetched.reverse()
+    history = []
+    for msg in fetched:
+        role = 'assistant' if msg.author == client.user else 'user'
+        content = msg.content
+        if role == 'user':
+            content = f"{msg.author.display_name}: {content}"
+        history.append({'role': role, 'content': content})
+    return history
 
 @client.event
 async def on_message(message):
@@ -81,6 +99,7 @@ async def on_message(message):
     text = message.content.replace(f'<@{client.user.id}>', '').strip()
     user_id = str(message.author.id)
     username = message.author.display_name
+    user_names[user_id] = username
 
     file_data = None
     file_name = None
@@ -94,9 +113,9 @@ async def on_message(message):
                 file_bytes = await attachment.read()
                 file_data = base64.b64encode(file_bytes).decode('utf-8')
                 file_name = attachment.filename
-                type_map = {'.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.png':'image/png',
-                           '.gif':'image/gif', '.webp':'image/webp', '.pdf':'application/pdf',
-                           '.txt':'text/plain', '.docx':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}
+                type_map = {'.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png',
+                            '.gif':'image/gif','.webp':'image/webp','.pdf':'application/pdf',
+                            '.txt':'text/plain','.docx':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}
                 file_type = type_map.get(ext, '')
             except Exception as e:
                 print(f'Error leyendo adjunto: {e}')
@@ -106,44 +125,36 @@ async def on_message(message):
 
     if message.reference:
         thread_id = str(message.reference.message_id)
-        if thread_id not in thread_histories:
-            try:
-                ref_msg = await message.channel.fetch_message(message.reference.message_id)
-                thread_histories[thread_id] = [
-                    {'role': 'assistant' if ref_msg.author == client.user else 'user',
-                     'content': ref_msg.content}
-                ]
-            except:
-                thread_histories[thread_id] = []
+        if thread_id in thread_histories and len(thread_histories[thread_id]) > 0:
+            history_to_send = thread_histories[thread_id]
+        else:
+            history_to_send = await get_thread_history(message)
+            thread_histories[thread_id] = history_to_send
     else:
         thread_id = str(message.id)
         thread_histories[thread_id] = []
+        history_to_send = []
 
     async with message.channel.typing():
         try:
             loop = asyncio.get_event_loop()
-            # Detectar si es el owner
             is_owner = str(message.author.id) == OWNER_ID
-            print(f'DEBUG: author={message.author.id}, owner={OWNER_ID}, is_owner={is_owner}, text={repr(text)}')
 
-            # Comandos especiales del owner
             if is_owner and text.strip().startswith('!'):
                 if text == '!estado':
-                    import requests as _req
-                    import asyncio as _asyncio
-                    health = _req.get('http://localhost:5000/health').json()
-                    await message.reply(f"✅ Servidor OK\nModelo: {health.get('model')}\nOllama corriendo")
+                    health = requests.get('http://localhost:5000/health').json()
+                    await message.reply(f"Servidor OK\nModelo: {health.get('model')}")
                     return
                 elif text == '!sync':
                     import subprocess
-                    subprocess.Popen(['rclone', 'copy', '/workspace/AuraX/discord_history.json', 'drive:AuraX-Historial/'])
-                    await message.reply("✅ Sync a Drive iniciado")
+                    subprocess.Popen(['rclone', 'copy', HISTORY_FILE, 'drive:AuraX-Historial/'])
+                    await message.reply("Sync a Drive iniciado")
                     return
                 elif text == '!reiniciar':
-                    await message.reply("🔄 Reiniciando servidor...")
+                    await message.reply("Reiniciando servidor...")
                     import subprocess
                     subprocess.Popen(['pkill', '-f', 'servidor.py'])
-                    await _asyncio.sleep(2)
+                    await asyncio.sleep(2)
                     subprocess.Popen(['python', '/workspace/AuraX/servidor.py'])
                     return
 
@@ -151,76 +162,69 @@ async def on_message(message):
                 'mensaje': text or f'Analiza este archivo: {file_name}',
                 'es_owner': is_owner,
                 'user_id': user_id,
+                'username': username,
                 'chat_id': thread_id,
-                'history': thread_histories.get(thread_id, [])
+                'history': history_to_send
             }
             if file_data:
                 payload['file_data'] = file_data
                 payload['file_name'] = file_name
                 payload['file_type'] = file_type
 
+            # Buscar media link antes de llamar al modelo
+            media_url = None
+            msg_lower = (text or '').lower()
+            if any(k in msg_lower for k in ['busca', 'buscar', 'pon', 'video de', 'cancion de', 'canción de', 'youtube', 'spotify']):
+                platform = 'spotify' if 'spotify' in msg_lower else 'youtube'
+                try:
+                    media_res = requests.get('http://localhost:5000/search_media', 
+                        params={'q': text, 'platform': platform}, timeout=10)
+                    if media_res.status_code == 200:
+                        media_url = media_res.json().get('url')
+                except:
+                    pass
+
             res = await loop.run_in_executor(_executor, lambda: requests.post(AURAX_URL, json=payload, timeout=300))
             reply = res.json().get('respuesta', 'Error al responder')
+            
+            # Agregar link real al final si existe
+            if media_url:
+                reply = reply.split('http')[0].strip() + f'\n{media_url}'
 
             thread_histories.setdefault(thread_id, [])
             thread_histories[thread_id].append({'role': 'user', 'content': f"{username}: {text or file_name}", 'timestamp': int(time.time())})
             thread_histories[thread_id].append({'role': 'assistant', 'content': reply, 'timestamp': int(time.time())})
-
             if len(thread_histories[thread_id]) > 40:
                 thread_histories[thread_id] = thread_histories[thread_id][-40:]
-
             save_history(thread_histories)
 
-            # Si hay codigo adjunto, pedirlo como archivo
-            if "[codigo adjunto como archivo]" in reply:
-                try:
-                    code_payload = {
-                        'mensaje': 'Dame SOLO el codigo completo sin explicaciones ni texto, solo el codigo puro',
-                        'user_id': user_id,
-                        'chat_id': thread_id,
-                        'history': thread_histories.get(thread_id, [])
-                    }
-                    code_res = await loop.run_in_executor(_executor, lambda: requests.post(AURAX_URL, json=code_payload, timeout=300))
-                    code_only = code_res.json().get('respuesta', '')
-                    import re as _re3
-                    code_blocks = _re3.findall(r'```(?:python|py|bash|js)?\n?([\s\S]*?)```', code_only)
-                    if code_blocks:
-                        code_content = '\n\n'.join(code_blocks)
-                    else:
-                        code_content = code_only
-                    discord_files.append(discord.File(io.BytesIO(code_content.encode()), filename='codigo.py'))
-                    reply = reply.replace('[codigo adjunto como archivo]', '[archivo adjunto 👆]')
-                except Exception as ce:
-                    print(f'Error obteniendo codigo: {ce}')
+            discord_files = []
             clean_text, file_block = parse_attachment_block(reply)
             clean_text, image_prompt = parse_image_block(clean_text)
 
             if len(clean_text) > 2000:
                 clean_text = clean_text[:1997] + '...'
 
-            discord_files = []
-
             if file_block:
                 try:
                     gen_res = requests.post(GENERATE_FILE_URL, json=file_block, timeout=30)
                     if gen_res.status_code == 200:
-                        ext = file_block['type']
-                        fname = file_block['name'] if '.' in file_block['name'] else f"{file_block['name']}.{ext}"
+                        ext2 = file_block['type']
+                        fname = file_block['name'] if '.' in file_block['name'] else f"{file_block['name']}.{ext2}"
                         discord_files.append(discord.File(io.BytesIO(gen_res.content), filename=fname))
                 except Exception as fe:
                     print(f'Error generando archivo: {fe}')
 
             if image_prompt:
                 try:
-                    img_url = f'https://image.pollinations.ai/prompt/{image_prompt}'
-                    img_res = requests.get(img_url, timeout=30)
+                    img_res = requests.get(f'https://image.pollinations.ai/prompt/{image_prompt}', timeout=30)
                     if img_res.status_code == 200:
                         discord_files.append(discord.File(io.BytesIO(img_res.content), filename='imagen.png'))
-                except Exception as ie:
-                    print(f'Error generando imagen: {ie}')
+                except:
+                    pass
 
             if discord_files:
-                await message.reply(clean_text or 'Aquí tienes:', files=discord_files)
+                await message.reply(clean_text or 'Aqui tienes:', files=discord_files)
             else:
                 await message.reply(clean_text or reply)
 
