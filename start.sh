@@ -1,37 +1,20 @@
 #!/bin/bash
-echo "🔥 Iniciando AuraX..."
-
-# Ollama
-ollama serve &
-echo "⏳ Esperando Ollama..."
-until curl -s http://localhost:11434 > /dev/null 2>&1; do sleep 1; done
-echo "✅ Ollama listo"
-
-# Flask
-cd /workspace/AuraX && python servidor.py &
-echo "⏳ Esperando Flask..."
-until curl -s http://localhost:5000/health > /dev/null 2>&1; do sleep 1; done
-echo "✅ Flask listo"
-
-# Ngrok
-pkill ngrok 2>/dev/null; sleep 1
-nohup ngrok http 5000 --url=drained-expand-implosive.ngrok-free.dev > /tmp/ngrok.log 2>&1 &
-echo "⏳ Esperando Ngrok..."
+echo "▶️ Arrancando AuraX..."
+pkill ollama 2>/dev/null; sleep 1
+OLLAMA_KEEP_ALIVE=-1 OLLAMA_NUM_PARALLEL=4 ollama serve > /tmp/ollama.log 2>&1 &
+sleep 8
+pkill -f searx.webapp 2>/dev/null; sleep 1
+SEARXNG_SETTINGS_PATH=/etc/searxng/settings.yml python -m searx.webapp > /tmp/searxng.log 2>&1 &
 sleep 5
-echo "✅ Ngrok listo"
-
-# Discord bot
-pkill -f discord_bot.py 2>/dev/null; sleep 1
-cd /workspace/AuraX && nohup python discord_bot.py > /tmp/discord.log 2>&1 &
+curl -s "http://localhost:8888/search?q=test&format=json" | python3 -c "import sys,json; json.load(sys.stdin); print('✅ SearXNG OK')" 2>/dev/null || echo "⚠️ SearXNG falló"
+pkill -f servidor.py 2>/dev/null; sleep 1
+python /workspace/AuraX/servidor.py > /tmp/servidor.log 2>&1 &
 sleep 3
-echo "✅ Discord bot listo"
-
-echo "🚀 AuraX completamente listo!"
-
-# Arrancar SearXNG si está instalado
-if [ -d "/workspace/searxng" ]; then
-  echo "⏳ Iniciando SearXNG..."
-  SEARXNG_SETTINGS_PATH=/etc/searxng/settings.yml python -m searx.webapp > /tmp/searxng.log 2>&1 &
-  sleep 3
-  echo "✅ SearXNG listo"
-fi
+pkill ngrok 2>/dev/null; sleep 1
+ngrok http 5000 --url=drained-expand-implosive.ngrok-free.dev > /dev/null 2>&1 &
+sleep 2
+pkill -f discord_bot.py 2>/dev/null; sleep 1
+python /workspace/AuraX/discord_bot.py > /tmp/bot.log 2>&1 &
+sleep 3
+echo "✅ AuraX corriendo!"
+echo "Logs: /tmp/servidor.log | /tmp/bot.log | /tmp/searxng.log"
