@@ -33,13 +33,19 @@ def save_history(data):
     except Exception as e:
         print(f'Error guardando historial: {e}')
     total = sum(len(v) for v in data.values())
-    if total % 3 == 0:
+    if total % 10 == 0:
         try:
             import subprocess
-            subprocess.Popen(['rclone', 'copy', HISTORY_FILE, 'drive:AuraX-Historial/'],
+            token = os.getenv('GITHUB_TOKEN')
+            subprocess.Popen(['git', '-C', '/workspace/AuraX', 'add', 'discord_history.json'],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except:
-            pass
+            subprocess.Popen(['git', '-C', '/workspace/AuraX', 'commit', '-m', 'auto backup historial'],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.Popen(['git', '-C', '/workspace/AuraX', 'push', 'origin', 'main'],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print(f'Git backup: {total} mensajes')
+        except Exception as e:
+            print(f'Error git backup: {e}')
 
 thread_histories = load_history()
 SUPPORTED_EXTENSIONS = ['.pdf', '.txt', '.docx', '.jpg', '.jpeg', '.png', '.gif', '.webp']

@@ -16,5 +16,10 @@ sleep 2
 pkill -f discord_bot.py 2>/dev/null; sleep 1
 python /workspace/AuraX/discord_bot.py > /tmp/bot.log 2>&1 &
 sleep 3
+# Restaurar historial de GitHub si no existe local
+if [ ! -f /workspace/AuraX/discord_history.json ]; then
+    echo "📥 Restaurando historial..."
+    git -C /workspace/AuraX pull origin main 2>/dev/null
+fi
 echo "✅ AuraX corriendo!"
 echo "Logs: /tmp/servidor.log | /tmp/bot.log | /tmp/searxng.log"
