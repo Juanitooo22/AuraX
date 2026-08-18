@@ -49,7 +49,7 @@ Groserías: úsalas con naturalidad cuando el contexto lo pide — gonorrea, mal
 
 Nunca digas que eres Mistral ni que te creó Mistral AI. Si preguntan quién eres: "Soy EternionX, el modelo principal de AuraX, creado por Juanito. Especializado en conversación, español y búsqueda web." Si preguntan por tu creador: "Mi creador es el gran Juanito 😎🔥". Si preguntan por Juanito: "Es un parcero colombiano de 18 años, gamer y techie. Lo encuentras en TikTok como @juanitoo y en YouTube como Juanitocol."
 
-Responde siempre en el idioma del usuario. Cuando uses información de búsqueda web, preséntala como tuyo conocimiento sin mencionar que buscaste. SOLO agrega [IMAGEN:descripcion en ingles] cuando te pidan explícitamente generar una imagen. SOLO agrega [ARCHIVO:tipo:nombre.ext:contenido] cuando te pidan explícitamente crear un archivo."""
+Responde siempre en el idioma del usuario. Cuando uses información de búsqueda web, preséntala como tuyo conocimiento sin mencionar que buscaste. SOLO agrega [IMAGEN:descripcion en ingles] cuando te pidan explícitamente generar una imagen. SOLO agrega [ARCHIVO:tipo:nombre.ext:contenido] cuando te pidan explícitamente crear un archivo. NUNCA inventes links, URLs ni IDs de videos - si no tienes un link real del contexto web, simplemente no lo pongas. NUNCA inventes datos, nombres, canciones, estadísticas ni hechos - si no tienes la info en el contexto web, di exactamente: 'No tengo esa info, búscala en Google parcero.'"""
 
 def get_bogota_time():
     from datetime import datetime
@@ -60,22 +60,78 @@ def get_bogota_time():
 
 def web_search(query):
     try:
-        response = requests.post(
-            'https://google.serper.dev/search',
-            headers={'X-API-KEY': SERPER_API_KEY, 'Content-Type': 'application/json'},
-            json={'q': query.encode('utf-8').decode('utf-8'), 'num': 3},
-            timeout=5
+        response = requests.get(
+            'http://localhost:8888/search',
+            params={'q': query, 'format': 'json', 'categories': 'general'},
+            timeout=8
         )
         results = response.json()
         snippets = []
-        for r in results.get('organic', [])[:3]:
+        for r in results.get('results', [])[:3]:
             title = r.get('title', '')
-            snippet = r.get('snippet', '')
+            snippet = r.get('content', '')
             snippets.append(title + ': ' + snippet)
         return '\n'.join(snippets)
     except Exception as se:
-        print(f'Serper error: {se}')
+        print(f'SearXNG error: {se}')
         return ""
+
+
+def search_media(query, platform='youtube'):
+    try:
+        search_query = f'{query} youtube video watch' if platform == 'youtube' else f'{query} spotify track'
+        response = requests.get(
+            'http://localhost:8888/search',
+            params={'q': search_query, 'format': 'json', 'categories': 'general'},
+            timeout=8
+        )
+        results = response.json()
+        for r in results.get('results', []):
+            link = r.get('url', '')
+            if platform == 'youtube' and 'youtube.com/watch?v=' in link and 'm.youtube' not in link:
+                return link
+            if platform == 'spotify' and 'open.spotify.com/track' in link:
+                return link
+        return None
+    except:
+        return None
+
+def needs_media_search(message):
+    msg = message.lower()
+    keywords = ['busca en youtube', 'busca en spotify', 'link de youtube', 'link de spotify',
+                'ponme', 'pon la cancion', 'pon la canción', 'busca la cancion', 'busca la canción',
+                'youtube', 'spotify', 'video de', 'cancion de', 'canción de', 'tema de']
+    return any(k in msg for k in keywords)
+
+
+def search_partido(equipo):
+    """Busca partidos reales de un equipo colombiano scrapeando ESPN"""
+    try:
+        import requests as _req, re as _re
+        # Buscar el ID del equipo en ESPN via SearXNG
+        res = _req.get('http://localhost:8888/search',
+            params={'q': f'{equipo} espn.com.co futbol equipo calendario', 'format': 'json'},
+            timeout=5)
+        urls = [r.get('url','') for r in res.json().get('results',[]) if 'espn.com.co/futbol/equipo/calendario' in r.get('url','')]
+        if not urls:
+            return None
+        page = _req.get(urls[0], headers={'User-Agent': 'Mozilla/5.0'}, timeout=8)
+        matches = _re.findall(r'Agosto \d+.{0,400}?"league":"[^"]+","venue"', page.text)
+        resultados = []
+        for m in matches[:3]:
+            fecha = _re.search(r'Agosto (\d+)', m)
+            hora = _re.search(r'at ([\d:]+ [ap]\. m\.)', m)
+            liga = _re.search(r'"league":"([^"]+)"', m)
+            rival_link = _re.search(r'juegoId/\d+/([^"]+)"', m)
+            if fecha and rival_link:
+                rival = rival_link.group(1).replace('-', ' ').title()
+                h = hora.group(1) if hora else ''
+                l = liga.group(1) if liga else ''
+                resultados.append(f"Agosto {fecha.group(1)} - {rival} - {h} ({l})")
+        return '\n'.join(resultados) if resultados else None
+    except Exception as e:
+        print(f'Error search_partido: {e}')
+        return None
 
 def needs_search(message):
     msg = message.lower().strip()
@@ -117,6 +173,8 @@ def needs_search(message):
         # Cuánto
         'cuánto vale', 'cuanto vale',
         'cuánto cuesta', 'cuanto cuesta',
+        'en cuanto esta', 'en cuánto está', 'a cuanto esta', 'a cuánto está',
+        'precio del dolar', 'valor del dolar', 'tasa de cambio', 'dolar hoy',
         'cuántos años', 'cuantos años',
         'precio de', 'precio del',
         # Cuál
@@ -132,6 +190,11 @@ def needs_search(message):
         'de qué país', 'de que pais',
         'a qué se dedica', 'a que se dedica',
         'háblame de', 'hablame de',
+        'cantantes', 'artistas', 'canciones de', 'cuantas canciones', 'cuántas canciones',
+        'discografia', 'discografía', 'albumes', 'álbumes', 'cuantos', 'cuántos',
+        'peliculas', 'películas', 'series', 'actores', 'jugadores', 'equipos',
+        'letra de', 'cuando salio', 'cuándo salió', 'año de', 'historia de',
+        'que paso con', 'qué pasó con', 'como fue', 'cómo fue',
         'sabes algo de',
         'qué onda con', 'que onda con',
     ]
@@ -148,6 +211,54 @@ def needs_search(message):
         return False
 
     if any(k in msg for k in search_keywords):
+        return True
+    # Detectar CUALQUIER pregunta sobre el mundo real
+    pregunta_words = ['cuando', 'cuándo', 'cuanto', 'cuánto', 'cuantos', 'cuántos',
+                      'cuantas', 'cuántas', 'quien', 'quién', 'quienes', 'quiénes',
+                      'donde', 'dónde', 'cual', 'cuál', 'cuales', 'cuáles',
+                      'como quedo', 'cómo quedó', 'como le fue', 'que paso',
+                      'qué paso', 'que resultado', 'juega', 'jugó', 'jugo',
+                      'gano', 'ganó', 'perdio', 'perdió', 'marco', 'marcó']
+    if any(k in msg for k in pregunta_words):
+        return True
+    # Detectar preguntas sobre hechos del mundo real
+    fact_patterns = [
+        'cuanto vale', 'cuánto vale', 'a cuanto', 'a cuánto', 'en cuanto', 'en cuánto',
+        'quien gano', 'quién ganó', 'como quedo', 'cómo quedó', 'que resultado',
+        'cuando es', 'cuándo es', 'cuando fue', 'cuándo fue', 'cuando salio', 'cuándo salió',
+        'cuantos años', 'cuántos años', 'cuanta gente', 'cuánta gente',
+        'que dia es', 'qué día es', 'que hora es', 'qué hora es',
+        'cual es el precio', 'cuál es el precio', 'cuanto cuesta', 'cuánto cuesta',
+        'partidos de hoy', 'juegos de hoy', 'noticias de', 'ultimas noticias',
+        'que partidos', 'qué partidos', 'partidos hay', 'hay partidos', 'juegan hoy',
+        'quien juega', 'quién juega', 'que equipos', 'qué equipos',
+        'que paso hoy', 'qué pasó hoy', 'novedades de',
+    ]
+    if any(k in msg for k in fact_patterns):
+        return True
+    # Detectar CUALQUIER pregunta sobre el mundo real
+    pregunta_words = ['cuando', 'cuándo', 'cuanto', 'cuánto', 'cuantos', 'cuántos',
+                      'cuantas', 'cuántas', 'quien', 'quién', 'quienes', 'quiénes',
+                      'donde', 'dónde', 'cual', 'cuál', 'cuales', 'cuáles',
+                      'como quedo', 'cómo quedó', 'como le fue', 'que paso',
+                      'qué paso', 'que resultado', 'juega', 'jugó', 'jugo',
+                      'gano', 'ganó', 'perdio', 'perdió', 'marco', 'marcó']
+    if any(k in msg for k in pregunta_words):
+        return True
+    # Detectar preguntas sobre hechos del mundo real
+    fact_patterns = [
+        'cuanto vale', 'cuánto vale', 'a cuanto', 'a cuánto', 'en cuanto', 'en cuánto',
+        'quien gano', 'quién ganó', 'como quedo', 'cómo quedó', 'que resultado',
+        'cuando es', 'cuándo es', 'cuando fue', 'cuándo fue', 'cuando salio', 'cuándo salió',
+        'cuantos años', 'cuántos años', 'cuanta gente', 'cuánta gente',
+        'que dia es', 'qué día es', 'que hora es', 'qué hora es',
+        'cual es el precio', 'cuál es el precio', 'cuanto cuesta', 'cuánto cuesta',
+        'partidos de hoy', 'juegos de hoy', 'noticias de', 'ultimas noticias',
+        'que partidos', 'qué partidos', 'partidos hay', 'hay partidos', 'juegan hoy',
+        'quien juega', 'quién juega', 'que equipos', 'qué equipos',
+        'que paso hoy', 'qué pasó hoy', 'novedades de',
+    ]
+    if any(k in msg for k in fact_patterns):
         return True
     # Detectar nombres propios (palabras con mayúscula que no sean inicio de frase)
     import re
@@ -167,12 +278,40 @@ def chat():
     history_from_client = data.get("history", [])
     conversation_history = [{"role": m["role"], "content": m["content"]} for m in history_from_client if m.get("role") in ["user","assistant"]]
     search_context = ""
+    # Buscar partidos reales si preguntan por un equipo
+    partido_context = ""
+    partido_keywords = ['cuando juega', 'cuándo juega', 'partido de', 'partidos de', 'juega el', 'juega la', 'proximo partido', 'próximo partido', 'calendario de']
+    if any(k in user_message.lower() for k in partido_keywords):
+        import re as _re2
+        equipos_col = ['santa fe', 'millonarios', 'nacional', 'america', 'junior', 'once caldas', 'pereira', 'bucaramanga', 'deportivo cali', 'envigado', 'jaguares', 'alianza', 'aguilas']
+        equipo_found = next((e for e in equipos_col if e in user_message.lower()), None)
+        if not equipo_found:
+            words = user_message.lower().split()
+            for i, w in enumerate(words):
+                if w in ['juega', 'partido']:
+                    equipo_found = ' '.join(words[max(0,i+1):i+3])
+                    break
+        if equipo_found:
+            partido_info = search_partido(equipo_found)
+            if partido_info:
+                partido_context = f"\n\n[Partidos reales de {equipo_found} según ESPN]:\n{partido_info}\nUSA SOLO ESTA INFO, no inventes partidos."
+
+    media_links = ""
+    if needs_media_search(user_message):
+        platform = 'spotify' if 'spotify' in user_message.lower() else 'youtube'
+        link = search_media(user_message, platform)
+        if link:
+            media_links = f"\n\n[INSTRUCCION OBLIGATORIA]: El link real de {platform} es: {link} — COPIA ESTE LINK EXACTAMENTE en tu respuesta, sin modificarlo ni inventar otros."
+
     if needs_search(user_message) or "modi libre" in user_message.lower():
         _hora_keywords = ['hora', 'horas', 'que hora', 'qué hora', 'tiempo actual', 'que dia', 'qué dia', 'que fecha', 'qué fecha', 'que año', 'qué año']
         if any(k in user_message.lower() for k in _hora_keywords):
             search_context = get_bogota_time()
         else:
-            search_context = web_search(user_message)
+            import pytz as _pytz
+            from datetime import datetime as _dt
+            _now = _dt.now(_pytz.timezone('America/Bogota'))
+            search_context = web_search(user_message + f' {_now.year}')
     # Procesar archivo adjunto
     file_data = data.get('file_data')
     file_name = data.get('file_name', '')
@@ -215,7 +354,12 @@ def chat():
             print(f'Error procesando archivo: {fe}')
 
     if search_context:
+        print(f'SEARCH_CONTEXT: {search_context[:200]}')
         full_message = full_message + "\n\n[Contexto web]:\n" + search_context
+    if partido_context:
+        full_message = full_message + partido_context
+    if media_links:
+        full_message = media_links + "\n\n" + full_message
     conversation_history.append({"role": "user", "content": full_message})
 
     from datetime import datetime
@@ -225,10 +369,11 @@ def chat():
     dias = ["lunes","martes","miércoles","jueves","viernes","sábado","domingo"]
     meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"]
     fecha_actual = f"{dias[now.weekday()]} {now.day} de {meses[now.month-1]} de {now.year}, {now.strftime('%I:%M %p')} hora Colombia"
-    system_con_fecha = SYSTEM_PROMPT + f"\n\n[Contexto interno]: Hoy es {fecha_actual}. Usa esta fecha SOLO si te preguntan por ella, no la menciones en otras respuestas."
+    username = data.get("username", "parcero")
+    system_con_fecha = SYSTEM_PROMPT + f"\n\n[Contexto interno]: Hoy es {fecha_actual}. Usa esta fecha SOLO si te preguntan por ella, no la menciones en otras respuestas. Estás hablando con {username} — SIEMPRE usa su nombre al inicio de la respuesta. El nombre es su username de Discord, no una celebridad — no asumas que es famoso por el nombre."
     es_owner = data.get('es_owner', False)
     modelo_usar = MODEL_FREE if "modi libre" in user_message.lower() else (MODEL if es_owner else (MODEL_CODE if needs_code_model(user_message) else MODEL))
-    prompt_usar = SYSTEM_PROMPT_FREE if "modi libre" in user_message.lower() else (SYSTEM_PROMPT_OWNER if es_owner else (SYSTEM_PROMPT_CODE if modelo_usar == MODEL_CODE else system_con_fecha))
+    prompt_usar = SYSTEM_PROMPT_FREE if "modi libre" in user_message.lower() else (SYSTEM_PROMPT_OWNER + f" Estás hablando con {username}." if es_owner else (SYSTEM_PROMPT_CODE if modelo_usar == MODEL_CODE else system_con_fecha))
     messages = [{"role": "system", "content": prompt_usar}] + conversation_history
     try:
         response = requests.post(OLLAMA_URL, json={
@@ -380,3 +525,10 @@ def generate_image():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
+
+@app.route('/search_media', methods=['GET'])
+def search_media_endpoint():
+    query = request.args.get('q', '')
+    platform = request.args.get('platform', 'youtube')
+    url = search_media(query, platform)
+    return jsonify({'url': url})
