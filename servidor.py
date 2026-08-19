@@ -412,6 +412,8 @@ def chat():
     if media_links:
         full_message = media_links + "\n\n" + full_message
     conversation_history.append({"role": "user", "content": full_message})
+    if voice_mode:
+        conversation_history = conversation_history[-4:]
 
     from datetime import datetime
     import pytz
@@ -491,7 +493,7 @@ def chat():
 
 @app.route('/reset', methods=['POST'])
 def reset():
-    global conversation_history
+    global conversation_histories
     conversation_histories = {}
     return jsonify({"status": "ok"})
 
@@ -715,12 +717,12 @@ def tts_quick():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
-
 @app.route('/search_media', methods=['GET'])
 def search_media_endpoint():
     query = request.args.get('q', '')
     platform = request.args.get('platform', 'youtube')
     url = search_media(query, platform)
     return jsonify({'url': url})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=False)
