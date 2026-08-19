@@ -430,6 +430,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 <div class="saving" id="savingIndicator">💾 Guardando...</div>
 
 <script type="module">
+// Ocultar login mientras Firebase verifica sesión
+document.getElementById('loginScreen').style.opacity='0';
+document.getElementById('loginScreen').style.pointerEvents='none';
+
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -473,6 +477,8 @@ window.loginWithGoogle = async () => {
 document.getElementById('loginBtn').addEventListener('click', () => window.loginWithGoogle());
 window.logout = async () => {
   await signOut(auth); window.removeAttachment();
+  document.getElementById('loginScreen').style.opacity='1';
+  document.getElementById('loginScreen').style.pointerEvents='auto';
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('appShell').style.display='none';
   chats=[]; activeId=null;
@@ -490,6 +496,12 @@ onAuthStateChanged(auth, async (user) => {
     if(chats.length===0) newChat(); else { activeId=chats[0].id; renderChatList(); renderMessages(); }
     // Mostrar FAB en mobile
     if(window.innerWidth<=640) document.getElementById('voiceFab').classList.add('active');
+  } else {
+    // No hay sesión, mostrar login
+    document.getElementById('loginScreen').style.opacity='1';
+    document.getElementById('loginScreen').style.pointerEvents='auto';
+    document.getElementById('loginScreen').style.display='flex';
+    document.getElementById('appShell').style.display='none';
   }
 });
 
