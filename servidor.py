@@ -3,7 +3,21 @@ from flask_cors import CORS
 import requests
 import os
 import base64
+import time
 from dotenv import load_dotenv
+
+# ============================================================
+# WHISPER STT
+# ============================================================
+from faster_whisper import WhisperModel
+print("🎙️ Cargando Whisper Small en CPU...")
+_whisper = WhisperModel(
+    "small",
+    device="cpu",
+    compute_type="int8",
+    cpu_threads=12
+)
+print("✅ Whisper Small listo.")
 
 try:
     import fitz
@@ -23,7 +37,7 @@ _kokoro = _Kokoro('/workspace/AuraX/kokoro-v1.0.onnx', '/workspace/AuraX/voices-
 
 SERPER_API_KEY = os.getenv('SERPER_API_KEY')
 OLLAMA_URL = "http://localhost:11434/api/chat"
-MODEL = "gemma3:27b"
+MODEL = "gemma3:12b-it-q4_K_M"
 MODEL_CODE = "hf.co/bartowski/Qwen2.5-Coder-14B-Instruct-abliterated-GGUF:Q4_K_M"
 SYSTEM_PROMPT_CODE = """Eres KromaX, experto en codigo. Responde en español. SIEMPRE que generes codigo, ponlo en un bloque [ARCHIVO:py:nombre.py:codigo_completo] al final. Nunca trunces el codigo."""
 MODEL_FREE = "dolphin3:8b"
@@ -583,26 +597,55 @@ def tts():
 
 @app.route('/stt', methods=['POST', 'OPTIONS'])
 def stt():
+    """
+    Convierte audio a texto usando Whisper Small.
+
+    Whisper se carga una sola vez al iniciar el servidor
+    y se ejecuta en CPU con INT8 para no competir por VRAM
+    con los modelos de Ollama.
+    """
     if request.method == 'OPTIONS':
         from flask import Response as _Resp
-        r = _Resp()
-        r.headers['Access-Control-Allow-Origin'] = '*'
-        r.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-        r.headers['Access-Control-Allow-Headers'] = '*'
-        return r
-    """Convierte audio a texto con Whisper"""
+        response = _Resp()
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = '*'
+        return response
     try:
         audio_data = request.data
-        with open('/tmp/input_audio.wav', 'wb') as f:
+        if not audio_data:
+            return jsonify({
+                'error': 'No se recibió audio'
+            }), 400
+        audio_path = '/tmp/input_audio.wav'
+        with open(audio_path, 'wb') as f:
             f.write(audio_data)
-        
-        from faster_whisper import WhisperModel
-        model = WhisperModel("small", device="cuda", compute_type="float16")
-        segments, _ = model.transcribe('/tmp/input_audio.wav', language="es")
-        texto = " ".join([s.text for s in segments])
-        return jsonify({'texto': texto.strip()})
+        inicio = time.time()
+        segments, _ = _whisper.transcribe(
+            audio_path,
+            language="es",
+            beam_size=1,
+            vad_filter=True
+        )
+        texto = " ".join(
+            segment.text.strip()
+            for segment in segments
+            if segment.text.strip()
+        )
+        duracion = time.time() - inicio
+        print(
+            f"🎙️ STT: {duracion:.2f}s | "
+            f"Texto: {texto}"
+        )
+        return jsonify({
+            'texto': texto.strip(),
+            'tiempo': round(duracion, 2)
+        })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"❌ Error STT: {e}")
+        return jsonify({
+            'error': str(e)
+        }), 500
 
 
 @app.route('/tts_quick', methods=['POST'])
