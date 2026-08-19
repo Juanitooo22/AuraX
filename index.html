@@ -678,7 +678,7 @@ let silenceAnimation = null;
 let silenceStarted = null;
 let voiceStarted = false;
 
-const SILENCE_LIMIT = 1300;
+const SILENCE_LIMIT = 650;
 const VOICE_THRESHOLD = 10;
 
 window.toggleVoice = async () => {
@@ -712,11 +712,9 @@ async function startCall() {
     setCallStatus('Conectando con AuraX...');
     updateVoiceBtn(false);
     setupAudioAnalyser();
-    setTimeout(() => {
-      if (!callActive) return;
-      setCallStatus('Te escucho');
-      startRecording();
-    }, 500);
+    if (!callActive) return;
+    setCallStatus('Te escucho');
+    startRecording();
   } catch (error) {
     console.error('❌ MICRÓFONO:', error);
     setCallStatus('No se pudo acceder al micrófono');
@@ -878,9 +876,7 @@ async function processAudio() {
       if (!callActive) return;
       setCallStatus('Te escucho');
       isProcessing = false;
-      setTimeout(() => {
-        if (callActive) startRecording();
-      }, 250);
+      if (callActive) startRecording();
     };
     await currentAudio.play();
   } catch (error) {
@@ -889,12 +885,10 @@ async function processAudio() {
     isProcessing = false;
     document.getElementById('callWave')?.style.setProperty('display', 'none');
     if (callActive) {
-      setTimeout(() => {
-        if (callActive) {
-          setCallStatus('Te escucho');
-          startRecording();
-        }
-      }, 1200);
+      if (callActive) {
+        setCallStatus('Te escucho');
+        startRecording();
+      }
     }
   }
 }
