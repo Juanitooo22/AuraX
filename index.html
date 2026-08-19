@@ -724,7 +724,7 @@ async function processAudio(){
     if(!texto||texto.trim().length<2){ if(callActive) setTimeout(startRecording,300); return; }
     setCallStatus(''); document.getElementById('callWave').style.display='flex';
     const chat=chats.find(c=>c.id===activeId);
-    const chatRes = await fetch(NGROK+'/chat',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify({mensaje:texto,chat_id:activeId,user_id:currentUser?.uid,history:chat?chat.history.slice(-4):[],voice_mode:true})});
+    const chatRes = await fetch(NGROK+'/chat',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify({mensaje:texto,chat_id:activeId,user_id:currentUser?.uid,history:chat?chat.history.slice(-5):[],voice_mode:true})});
     const {respuesta}=await chatRes.json();
     if(chat){ chat.history.push({role:'user',content:texto}); chat.history.push({role:'assistant',content:respuesta}); }
     setCallStatus('');
