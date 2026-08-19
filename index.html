@@ -726,7 +726,7 @@ async function processAudio(){
     const chat=chats.find(c=>c.id===activeId);
     const chatRes=await fetch(NGROK+'/chat',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify({mensaje:texto,chat_id:activeId,user_id:currentUser?.uid,history:chat?chat.history.slice(-4):[],voice_mode:true})});
     const {respuesta}=await chatRes.json();
-    if(chat){ appendBubble('user',texto); chat.history.push({role:'user',content:texto}); appendBubble('ai',respuesta); chat.history.push({role:'assistant',content:respuesta}); saveChat(chat); }
+    if(chat){ chat.history.push({role:'user',content:texto}); chat.history.push({role:'assistant',content:respuesta}); }
     setCallStatus('AuraX hablando...');
     const ttsRes=await fetch(NGROK+'/tts',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify({texto:respuesta.slice(0,500)})});
     const audioBlob=await ttsRes.blob();
