@@ -445,26 +445,36 @@ def chat():
             "keep_alive": -1
         }, timeout=300)
         result = response.json()
-        print('OLLAMA RESULT:', result)
         assistant_message = result['message']['content']
+        print('OLLAMA ORIGINAL:', assistant_message)
         if voice_mode:
             import re
-            # Quitar emojis
+            # Limpiar saltos de línea
+            assistant_message = ' '.join(assistant_message.split())
+            # Eliminar emojis
             assistant_message = re.sub(
                 r'[\U00010000-\U0010ffff]', '',
                 assistant_message
             )
-            # Convertir saltos de línea en espacios
-            assistant_message = ' '.join(assistant_message.split())
-            # Limitar a una sola frase
-            partes = re.split(r'(?<=[.!?])\s+', assistant_message)
-            assistant_message = partes[0].strip()
-            # Máximo 12 palabras
+            # Eliminar espacios duplicados
+            assistant_message = ' '.join(assistant_message.split()).strip()
+            # Separar frases
+            frases = re.split(r'(?<=[.!?])\s+', assistant_message)
+            # Elegir la primera frase completa
+            assistant_message = frases[0].strip()
+            # Si la primera frase es demasiado larga,
+            # cortar buscando una pausa natural.
             palabras = assistant_message.split()
             if len(palabras) > 12:
-                assistant_message = ' '.join(palabras[:12])
-            # Limpiar puntuación sobrante
-            assistant_message = assistant_message.strip()
+                cortes = {',', '—', ' y ', ' pero ', ' porque ', ' que '}
+                texto_corto = ' '.join(palabras[:12])
+                # Intentar cortar en una coma
+                if ',' in texto_corto:
+                    texto_corto = texto_corto.rsplit(',', 1)[0]
+                assistant_message = texto_corto.strip()
+            # Garantizar que no termine con puntuación rara
+            assistant_message = assistant_message.rstrip(',;:-')
+            print('VOZ FINAL:', assistant_message)
         conversation_history.append({"role": "assistant", "content": assistant_message})
         if modelo_usar == MODEL_CODE:
             import re as _re2
