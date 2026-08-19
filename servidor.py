@@ -341,18 +341,42 @@ def chat():
         if link:
             media_links = f"\n\n[INSTRUCCION OBLIGATORIA]: El link real de {platform} es: {link} — COPIA ESTE LINK EXACTAMENTE en tu respuesta, sin modificarlo ni inventar otros."
 
-    voice_mode = data.get('voice_mode', False)
+    # ============================================================
+    # MODO VOZ
+    # ============================================================
+    voice_mode = bool(data.get('voice_mode', False))
     modelo_voz = 'dolphin3:8b'
-    if not voice_mode and (needs_search(user_message) or "modi libre" in user_message.lower()):
-        _hora_keywords = ['hora', 'horas', 'que hora', 'qué hora', 'tiempo actual', 'que dia', 'qué dia', 'que fecha', 'qué fecha', 'que año', 'qué año']
+    # En voz NO hacemos búsquedas web ni procesamiento adicional.
+    # Dolphin debe recibir únicamente lo que dijo el usuario.
+    if voice_mode:
+        search_context = ""
+        partido_context = ""
+        media_links = ""
+
+    # ============================================================
+    # BÚSQUEDA WEB — SOLO CHAT NORMAL
+    # ============================================================
+    if not voice_mode and (
+        needs_search(user_message)
+        or "modi libre" in user_message.lower()
+    ):
+        _hora_keywords = [
+            'hora', 'horas', 'que hora', 'qué hora',
+            'tiempo actual', 'que dia', 'qué dia',
+            'que fecha', 'qué fecha', 'que año', 'qué año'
+        ]
         if any(k in user_message.lower() for k in _hora_keywords):
             search_context = get_bogota_time()
         else:
             import pytz as _pytz
             from datetime import datetime as _dt
             _now = _dt.now(_pytz.timezone('America/Bogota'))
-            search_context = web_search(user_message + f' {_now.year}')
-    # Procesar archivo adjunto
+            search_context = web_search(
+                user_message + f' {_now.year}'
+            )
+    # ============================================================
+    # PROCESAR ARCHIVO ADJUNTO
+    # ============================================================
     file_data = data.get('file_data')
     file_name = data.get('file_name', '')
     file_type = data.get('file_type', '')
@@ -412,10 +436,18 @@ def chat():
     username = data.get("username", "parcero")
     system_con_fecha = SYSTEM_PROMPT + f"\n\n[Contexto interno]: Hoy es {fecha_actual}. Usa esta fecha SOLO si te preguntan por ella, no la menciones en otras respuestas. Estás hablando con {username} — SIEMPRE usa su nombre al inicio de la respuesta. El nombre es su username de Discord, no una celebridad — no asumas que es famoso por el nombre."
     es_owner = data.get('es_owner', False)
-    modelo_usar = MODEL_FREE if "modi libre" in user_message.lower() else (MODEL if es_owner else (MODEL_CODE if needs_code_model(user_message) else MODEL))
+    if voice_mode:
+        modelo_usar = modelo_voz
+    elif "modi libre" in user_message.lower():
+        modelo_usar = MODEL_FREE
+    elif es_owner:
+        modelo_usar = MODEL
+    elif needs_code_model(user_message):
+        modelo_usar = MODEL_CODE
+    else:
+        modelo_usar = MODEL
     tarea_keywords = ['tarea', 'para el colegio', 'para la universidad', 'explícame', 'explicame', 'qué es ', 'que es ', 'definición de', 'definicion de', 'para estudiar', 'resumen de', 'ensayo', 'concepto de']
     es_tarea = any(k in user_message.lower() for k in tarea_keywords)
-    modelo_usar = modelo_voz if voice_mode else modelo_usar
     prompt_usar = SYSTEM_PROMPT_VOZ if voice_mode else (SYSTEM_PROMPT_FREE if "modi libre" in user_message.lower() else (SYSTEM_PROMPT_OWNER + f" Estás hablando con {username}." if es_owner else (SYSTEM_PROMPT_CODE if modelo_usar == MODEL_CODE else (SYSTEM_PROMPT_TAREA if es_tarea else system_con_fecha))))
     messages = [{"role": "system", "content": prompt_usar}] + conversation_history
     try:
