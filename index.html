@@ -246,7 +246,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
     </div>
     <div class="login-title">Aura<span>X</span></div>
     <div class="login-sub">Tu asistente de IA personal.<br>Inicia sesión para continuar.</div>
-    <button class="login-btn" id="loginBtn">
+    <button class="login-btn" onclick="loginWithGoogle()">
       <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
       Continuar con Google
     </button>
@@ -430,10 +430,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 <div class="saving" id="savingIndicator">💾 Guardando...</div>
 
 <script type="module">
-// Ocultar login mientras Firebase verifica sesión
-document.getElementById('loginScreen').style.opacity='0';
-document.getElementById('loginScreen').style.pointerEvents='none';
-
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -465,20 +461,11 @@ const MODEL_INFO = {
 let loginInProgress=false;
 window.loginWithGoogle = async () => {
   if(loginInProgress) return; loginInProgress=true;
-  try { 
-    await signInWithPopup(auth, provider); 
-  }
-  catch(e){ 
-    console.error(e); 
-    alert('Error: ' + e.message); 
-  } 
-  finally{ loginInProgress=false; }
+  try { if(/iP(ad|hone|od)/.test(navigator.userAgent)) await signInWithPopup(auth,provider); else await signInWithRedirect(auth,provider); }
+  catch(e){ console.error(e); } finally{ loginInProgress=false; }
 };
-document.getElementById('loginBtn').addEventListener('click', () => window.loginWithGoogle());
 window.logout = async () => {
   await signOut(auth); window.removeAttachment();
-  document.getElementById('loginScreen').style.opacity='1';
-  document.getElementById('loginScreen').style.pointerEvents='auto';
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('appShell').style.display='none';
   chats=[]; activeId=null;
@@ -496,37 +483,15 @@ onAuthStateChanged(auth, async (user) => {
     if(chats.length===0) newChat(); else { activeId=chats[0].id; renderChatList(); renderMessages(); }
     // Mostrar FAB en mobile
     if(window.innerWidth<=640) document.getElementById('voiceFab').classList.add('active');
-  } else {
-    // No hay sesión, mostrar login
-    document.getElementById('loginScreen').style.opacity='1';
-    document.getElementById('loginScreen').style.pointerEvents='auto';
-    document.getElementById('loginScreen').style.display='flex';
-    document.getElementById('appShell').style.display='none';
   }
 });
 
 async function loadChats(){
   try{ const q=query(collection(db,'users',currentUser.uid,'chats'),orderBy('updatedAt','desc')); const snap=await getDocs(q); chats=snap.docs.map(d=>({id:d.id,...d.data()})); }catch(e){ chats=[]; }
 }
-const saveTimers=new Map();
-const pendingChatSaves=new Map();
-const activeChatSaves=new Set();
-function saveChat(chat){
-  if(!currentUser) return;
-  pendingChatSaves.set(chat.id,{name:chat.name,history:chat.history.map(message=>({...message})),updatedAt:Date.now()});
-  clearTimeout(saveTimers.get(chat.id));
-  saveTimers.set(chat.id,setTimeout(()=>flushChatSave(chat.id),500));
-}
-async function flushChatSave(chatId){
-  if(!currentUser||activeChatSaves.has(chatId)) return;
-  const data=pendingChatSaves.get(chatId); if(!data) return;
-  pendingChatSaves.delete(chatId); activeChatSaves.add(chatId); showSaving();
-  try{ await setDoc(doc(db,'users',currentUser.uid,'chats',chatId),data); }
-  catch(e){ console.error('Error guardando chat:',e); pendingChatSaves.set(chatId,data); }
-  finally{
-    activeChatSaves.delete(chatId);
-    if(pendingChatSaves.has(chatId)) saveTimers.set(chatId,setTimeout(()=>flushChatSave(chatId),100));
-  }
+async function saveChat(chat){
+  if(!currentUser) return; showSaving();
+  try{ await setDoc(doc(db,'users',currentUser.uid,'chats',chat.id),{name:chat.name,history:chat.history,updatedAt:Date.now()}); }catch(e){ console.error(e); }
 }
 async function deleteChatFromDB(id){ if(!currentUser) return; try{ await deleteDoc(doc(db,'users',currentUser.uid,'chats',id)); }catch(e){} }
 function showSaving(){ const el=document.getElementById('savingIndicator'); el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),1500); }
@@ -564,7 +529,7 @@ document.getElementById('settingsModal').addEventListener('click',e=>{ if(e.targ
 
 window.newChat=async()=>{ const id='chat_'+Date.now(); const chat={id,name:'Nuevo chat',history:[],updatedAt:Date.now()}; chats.unshift(chat); await saveChat(chat); activeId=id; window.removeAttachment(); renderChatList(); renderMessages(); document.getElementById('input').focus(); };
 window.activateChat=(id)=>{ activeId=id; renderChatList(); renderMessages(); document.getElementById('input').focus(); };
-window.deleteChat=async(id)=>{ clearTimeout(saveTimers.get(id)); saveTimers.delete(id); pendingChatSaves.delete(id); await deleteChatFromDB(id); chats=chats.filter(c=>c.id!==id); if(activeId===id){ if(chats.length===0) window.newChat(); else { activeId=chats[0].id; renderChatList(); renderMessages(); } } else renderChatList(); };
+window.deleteChat=async(id)=>{ await deleteChatFromDB(id); chats=chats.filter(c=>c.id!==id); if(activeId===id){ if(chats.length===0) window.newChat(); else { activeId=chats[0].id; renderChatList(); renderMessages(); } } else renderChatList(); };
 window.openRename=(id)=>{ renameTargetId=id; const chat=chats.find(c=>c.id===id); document.getElementById('renameInput').value=chat?chat.name:''; document.getElementById('renameModal').classList.add('open'); setTimeout(()=>{ document.getElementById('renameInput').focus(); document.getElementById('renameInput').select(); },50); };
 window.closeRename=()=>{ document.getElementById('renameModal').classList.remove('open'); renameTargetId=null; };
 window.confirmRename=async()=>{ const val=document.getElementById('renameInput').value.trim(); if(!val) return; const chat=chats.find(c=>c.id===renameTargetId); if(chat){ chat.name=val; await saveChat(chat); renderChatList(); } window.closeRename(); };
@@ -689,470 +654,299 @@ window.sendMessage=async()=>{
 };
 
 // ============================================================
-// AURAX — MODO LLAMADA CONTINUA
+// AURAX — MODO LLAMADA REAL (escucha continua + interrupción)
 // ============================================================
 
 const NGROK = 'https://drained-expand-implosive.ngrok-free.dev';
-let callActive=false,isRecording=false,isProcessing=false,isMuted=false;
-let mediaStream=null,mediaRecorder=null,audioChunks=[];
-let currentAudio=null,currentAudioUrl=null,audioContext=null,analyser=null,analyserData=null,silenceAnimation=null;
-let silenceStarted=null,voiceStarted=false,voiceStartTime=null,recordingStartedAt=null;
-const SILENCE_LIMIT=900,VOICE_THRESHOLD=14,MIN_VOICE_TIME=250,MIN_RECORDING_TIME=700;
 
-window.toggleVoice=async()=>{
-  if(!callActive){await startCall();return;}
-  if(isProcessing)return;
-  if(isRecording)stopRecording();else startRecording();
+let callActive = false;
+let isProcessing = false;
+let isMuted = false;
+let mediaStream = null;
+let audioContext = null;
+let analyser = null;
+let currentAudio = null;
+let currentAudioUrl = null;
+let recognition = null;
+let recognitionRunning = false;
+let recognitionRestart = null;
+let lastFinalTranscript = '';
+let userIsSpeaking = false;
+let interruptionTimer = null;
+
+const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+window.toggleVoice = async () => {
+  if (!callActive) await startCall();
 };
 
-async function startCall(){
-  if(callActive)return;
-  try{
-    if(!navigator.mediaDevices?.getUserMedia){setCallStatus('Tu navegador no permite usar el micrófono');return;}
-    setCallStatus('Solicitando micrófono...');
-    mediaStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
-    callActive=true;isMuted=false;isProcessing=false;
+async function startCall() {
+  if (callActive) return;
+  try {
+    if (!SpeechRecognitionAPI) {
+      setCallStatus('Chrome no permite voz continua aquí');
+      return;
+    }
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation:true, noiseSuppression:true, autoGainControl:true }
+    });
+    callActive = true;
+    isMuted = false;
     document.getElementById('callOverlay')?.classList.add('active');
-    const fab=document.getElementById('voiceFab');if(fab)fab.style.display='none';
-    updateVoiceBtn(false);setupAudioAnalyser();setCallStatus('Te escucho');
-    setTimeout(()=>{if(callActive&&!isProcessing&&!isRecording&&!isMuted)startRecording();},300);
-  }catch(error){
-    console.error('❌ MICRÓFONO:',error);setCallStatus('No se pudo acceder al micrófono');callActive=false;
-    if(mediaStream){mediaStream.getTracks().forEach(track=>track.stop());mediaStream=null;}
+    const fab=document.getElementById('voiceFab');
+    if (fab) fab.style.display='none';
+    setupAudioAnalyser();
+    setupContinuousRecognition();
+    setCallStatus('Te escucho');
+    updateVoiceBtn(true);
+    startListening();
+    monitorUserSpeech();
+  } catch(e) {
+    console.error('❌ LLAMADA:',e);
+    setCallStatus('No se pudo iniciar la llamada');
+    endCall();
   }
 }
 
 function setupAudioAnalyser(){
   try{
-    audioContext=new(window.AudioContext||window.webkitAudioContext)();analyser=audioContext.createAnalyser();
-    analyser.fftSize=512;analyser.smoothingTimeConstant=.65;analyserData=new Uint8Array(analyser.frequencyBinCount);
-    audioContext.createMediaStreamSource(mediaStream).connect(analyser);
-  }catch(error){console.error('❌ Audio analyser:',error);analyser=null;analyserData=null;}
+    audioContext=new (window.AudioContext||window.webkitAudioContext)();
+    analyser=audioContext.createAnalyser();
+    analyser.fftSize=512;
+    analyser.smoothingTimeConstant=.75;
+    const source=audioContext.createMediaStreamSource(mediaStream);
+    source.connect(analyser);
+  }catch(e){ console.warn('Audio analyser:',e); }
 }
 
-async function startRecording(){
-  if(!callActive||isRecording||isProcessing||isMuted||!mediaStream)return;
-  try{
-    if(audioContext?.state==='suspended')await audioContext.resume();
-    audioChunks=[];let mimeType='';
-    if(MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))mimeType='audio/webm;codecs=opus';
-    else if(MediaRecorder.isTypeSupported('audio/webm'))mimeType='audio/webm';
-    mediaRecorder=mimeType?new MediaRecorder(mediaStream,{mimeType}):new MediaRecorder(mediaStream);
-    mediaRecorder.ondataavailable=event=>{if(event.data?.size>0)audioChunks.push(event.data);};
-    mediaRecorder.onerror=event=>console.error('❌ MediaRecorder:',event);
-    mediaRecorder.onstop=()=>{
-      console.log('⏹️ Grabación detenida, chunks:',audioChunks.length);
-      setTimeout(processAudio,0);
-    };
-    mediaRecorder.start(100);
-    isRecording=true;voiceStarted=false;voiceStartTime=null;silenceStarted=null;recordingStartedAt=Date.now();
-    updateVoiceBtn(true);setCallStatus('Te escucho');document.getElementById('callWave')?.style.setProperty('display','flex');detectSpeech();
-  }catch(error){
-    console.error('❌ RECORDING:',error);isRecording=false;setCallStatus('Error con el micrófono');
-    setTimeout(()=>{if(callActive&&!isProcessing&&!isRecording&&!isMuted)startRecording();},500);
+function setupContinuousRecognition(){
+  recognition=new SpeechRecognitionAPI();
+  recognition.lang='es-CO';
+  recognition.continuous=true;
+  recognition.interimResults=true;
+  recognition.maxAlternatives=1;
+
+  recognition.onstart=()=>{
+    recognitionRunning=true;
+    setCallStatus(currentAudio ? 'AuraX está hablando · te escucho' : 'Te escucho');
+  };
+
+  recognition.onresult=event=>{
+    let finalText='';
+    let interim='';
+    for(let i=event.resultIndex;i<event.results.length;i++){
+      const text=event.results[i][0].transcript;
+      if(event.results[i].isFinal) finalText+=text+' ';
+      else interim+=text;
+    }
+
+    if(interim.trim()){
+      userIsSpeaking=true;
+      if(currentAudio) interruptAuraX();
+      setCallStatus('Te escucho...');
+    }
+
+    if(finalText.trim()){
+      const text=finalText.trim();
+      if(text===lastFinalTranscript) return;
+      lastFinalTranscript=text;
+      userIsSpeaking=false;
+      handleVoiceTurn(text);
+    }
+  };
+
+  recognition.onerror=event=>{
+    console.warn('🎙️ SpeechRecognition:',event.error);
+    recognitionRunning=false;
+    if(callActive && !isMuted && event.error!=='not-allowed' && event.error!=='service-not-allowed'){
+      clearTimeout(recognitionRestart);
+      recognitionRestart=setTimeout(startListening,250);
+    }
+  };
+
+  recognition.onend=()=>{
+    recognitionRunning=false;
+    if(callActive && !isMuted){
+      clearTimeout(recognitionRestart);
+      recognitionRestart=setTimeout(startListening,120);
+    }
+  };
+}
+
+function startListening(){
+  if(!callActive || isMuted || !recognition || recognitionRunning) return;
+  try{ recognition.start(); }catch(e){}
+}
+
+function stopListening(){
+  clearTimeout(recognitionRestart);
+  if(recognition && recognitionRunning){
+    try{ recognition.stop(); }catch(e){}
   }
+  recognitionRunning=false;
 }
 
-function detectSpeech(){
-  if(!callActive||!isRecording||!analyser)return;
-  analyser.getByteFrequencyData(analyserData);let sum=0;
-  for(let i=0;i<analyserData.length;i++)sum+=analyserData[i];
-  const speaking=sum/analyserData.length>VOICE_THRESHOLD;
-  if(speaking){if(!voiceStarted){voiceStarted=true;voiceStartTime=Date.now();}silenceStarted=null;setCallStatus('Te escucho...');}
-  else if(voiceStarted&&Date.now()-voiceStartTime>=MIN_VOICE_TIME){
-    if(!silenceStarted)silenceStarted=Date.now();
-    if(Date.now()-silenceStarted>=SILENCE_LIMIT){stopRecording();return;}
+function monitorUserSpeech(){
+  if(!callActive || !analyser) return;
+  const data=new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(data);
+  let sum=0;
+  for(let i=0;i<data.length;i++) sum+=data[i];
+  const avg=sum/data.length;
+  // Sirve como barge-in rápido: la transcripción confirma después la voz real.
+  if(currentAudio && avg>18){
+    clearTimeout(interruptionTimer);
+    interruptionTimer=setTimeout(()=>{
+      if(currentAudio) interruptAuraX();
+    },180);
   }
-  silenceAnimation=requestAnimationFrame(detectSpeech);
+  requestAnimationFrame(monitorUserSpeech);
 }
 
-function stopRecording(){
-  if(!isRecording)return;isRecording=false;
-  if(silenceAnimation){cancelAnimationFrame(silenceAnimation);silenceAnimation=null;}
-  updateVoiceBtn(false);document.getElementById('callWave')?.style.setProperty('display','none');
-  if(mediaRecorder&&mediaRecorder.state!=='inactive')mediaRecorder.stop();else processAudio();
+function interruptAuraX(){
+  if(!currentAudio) return;
+  console.log('🛑 Barge-in: Juanito interrumpió a AuraX');
+  currentAudio.pause();
+  currentAudio.currentTime=0;
+  currentAudio.src='';
+  currentAudio=null;
+  if(currentAudioUrl){ URL.revokeObjectURL(currentAudioUrl); currentAudioUrl=null; }
+  setCallStatus('Te escucho');
+  isProcessing=false;
+  startListening();
 }
 
-async function processAudio(){
-  if(!callActive||isProcessing)return;
-  const recordingDuration=Date.now()-(recordingStartedAt||Date.now()),chunks=audioChunks;audioChunks=[];
-  if(!chunks.length){console.warn('⚠️ No llegaron chunks de audio');restartListening();return;}
-  const blob=new Blob(chunks,{type:mediaRecorder?.mimeType||'audio/webm'});
-  console.log('🎧 Audio grabado:',blob.size,'bytes',recordingDuration,'ms');
-  if(blob.size<1500||recordingDuration<MIN_RECORDING_TIME){console.warn('⚠️ Audio demasiado corto');restartListening();return;}
+async function handleVoiceTurn(text){
+  if(!callActive || isMuted || !text || text.length<2) return;
   isProcessing=true;
+  interruptAuraX();
+  setCallStatus('AuraX te escucha');
+  console.log('🎤 Usuario:',text);
+
+  const chat=chats.find(c=>c.id===activeId);
+  if(chat){
+    chat.history.push({role:'user',content:text});
+    appendBubble('user',text);
+  }
+
   try{
-    setCallStatus('Procesando...');
-    console.log('📤 Enviando audio a /stt');
-    const sttRes=await fetch(NGROK+'/stt',{method:'POST',headers:{'Content-Type':'audio/webm','ngrok-skip-browser-warning':'1'},body:blob});
-    if(!sttRes.ok)throw new Error(`STT ${sttRes.status}: ${await sttRes.text()}`);
-    const sttData=await sttRes.json(),texto=(sttData.texto||sttData.text||sttData.transcription||'').trim();
-    console.log('🎤 Whisper:',texto||'(sin texto)');
-    if(!texto||texto.length<2){console.warn('⚠️ Whisper no detectó una frase');isProcessing=false;restartListening();return;}
-    setCallStatus('AuraX está pensando...');const chat=chats.find(c=>c.id===activeId);
-    const chatRes=await fetch(NGROK+'/chat',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify({mensaje:texto,modelo:'eternionx',web_search:false,chat_id:activeId,user_id:currentUser?.uid,history:chat?chat.history.slice(-8):[],voice_mode:true})});
-    const chatData=await chatRes.json();if(!chatRes.ok)throw new Error(`CHAT ${chatRes.status}: ${chatData.error||'Error'}`);
-    const respuesta=(chatData.respuesta||chatData.response||'').trim();if(!respuesta)throw new Error('AuraX no devolvió respuesta');
-    if(chat){chat.history.push({role:'user',content:texto});chat.history.push({role:'assistant',content:respuesta});await saveChat(chat);}
-    appendBubble('user',texto);appendBubble('ai',respuesta);setCallStatus('AuraX está hablando...');document.getElementById('callWave')?.style.setProperty('display','flex');
-    const ttsRes=await fetch(NGROK+'/tts',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify({texto:respuesta})});
-    if(!ttsRes.ok)throw new Error(`TTS ${ttsRes.status}: ${await ttsRes.text()}`);
-    const audioBlob=await ttsRes.blob();if(!callActive)return;
-    if(currentAudio){currentAudio.pause();currentAudio.src='';currentAudio=null;}
-    if(currentAudioUrl){URL.revokeObjectURL(currentAudioUrl);currentAudioUrl=null;}
-    currentAudioUrl=URL.createObjectURL(audioBlob);currentAudio=new Audio(currentAudioUrl);currentAudio.volume=1;
-    currentAudio.onended=()=>{document.getElementById('callWave')?.style.setProperty('display','none');if(!callActive)return;isProcessing=false;setCallStatus('Te escucho');setTimeout(()=>{if(callActive&&!isProcessing&&!isRecording&&!isMuted)startRecording();},250);};
-    currentAudio.onerror=error=>{console.error('❌ Error reproduciendo TTS:',error);isProcessing=false;if(callActive)restartListening();};
-    console.log('▶️ Reproduciendo TTS');
-    await currentAudio.play();
-  }catch(error){
-    console.error('❌ ERROR COMPLETO processAudio:',error);isProcessing=false;document.getElementById('callWave')?.style.setProperty('display','none');
-    if(callActive){setCallStatus('Error de conexión');setTimeout(()=>{if(callActive&&!isProcessing&&!isRecording&&!isMuted){setCallStatus('Te escucho');startRecording();}},700);}
+    setCallStatus('AuraX está respondiendo...');
+    const chatRes=await fetch(NGROK+'/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},
+      body:JSON.stringify({
+        mensaje:text,
+        modelo:'eternionx',
+        web_search:false,
+        chat_id:activeId,
+        user_id:currentUser?.uid,
+        history:chat ? chat.history.slice(-8) : [],
+        voice_mode:true
+      })
+    });
+    const chatData=await chatRes.json();
+    if(!chatRes.ok) throw new Error(`CHAT ${chatRes.status}: ${chatData.error||'Error'}`);
+    const respuesta=(chatData.respuesta||chatData.response||'').trim();
+    if(!respuesta) throw new Error('AuraX no devolvió respuesta');
+    console.log('🤖 AuraX:',respuesta);
+
+    if(chat){
+      chat.history.push({role:'assistant',content:respuesta});
+      await saveChat(chat);
+    }
+    appendBubble('ai',respuesta);
+
+    // IMPORTANTE: no apagamos el micrófono mientras AuraX habla.
+    // La escucha sigue activa para permitir interrupciones.
+    await speakAuraX(respuesta);
+  }catch(e){
+    console.error('❌ ERROR LLAMADA:',e);
+    setCallStatus('Hubo un problema, te escucho');
+  }finally{
+    isProcessing=false;
+    if(callActive && !isMuted) setCallStatus(currentAudio?'AuraX está hablando...':'Te escucho');
+    startListening();
   }
 }
 
-function restartListening(){
-  if(!callActive)return;isProcessing=false;if(isMuted){setCallStatus('Micrófono silenciado');return;}setCallStatus('Te escucho');
-  setTimeout(()=>{if(callActive&&!isProcessing&&!isRecording&&!isMuted)startRecording();},300);
+async function speakAuraX(text){
+  if(!callActive || !text) return;
+  setCallStatus('AuraX está hablando...');
+  document.getElementById('callWave')?.style.setProperty('display','flex');
+
+  const ttsRes=await fetch(NGROK+'/tts',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},
+    body:JSON.stringify({texto:text})
+  });
+  if(!ttsRes.ok) throw new Error(`TTS ${ttsRes.status}: ${await ttsRes.text()}`);
+  const blob=await ttsRes.blob();
+  if(!callActive) return;
+
+  if(currentAudio) interruptAuraX();
+  if(currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
+  currentAudioUrl=URL.createObjectURL(blob);
+  currentAudio=new Audio(currentAudioUrl);
+  currentAudio.volume=1;
+  currentAudio.onended=()=>{
+    if(currentAudioUrl){URL.revokeObjectURL(currentAudioUrl);currentAudioUrl=null;}
+    currentAudio=null;
+    document.getElementById('callWave')?.style.setProperty('display','none');
+    if(callActive) setCallStatus('Te escucho');
+  };
+  // SpeechRecognition permanece activo: el usuario puede interrumpir.
+  await currentAudio.play();
 }
 
-window.toggleMute=()=>{isMuted=!isMuted;const btn=document.getElementById('muteBtn');if(btn)btn.classList.toggle('muted',isMuted);
-  if(isMuted){setCallStatus('Micrófono silenciado');if(isRecording)stopRecording();}
-  else{setCallStatus('Te escucho');if(callActive&&!isProcessing&&!isRecording)startRecording();}
+window.toggleMute=()=>{
+  isMuted=!isMuted;
+  const btn=document.getElementById('muteBtn');
+  if(btn) btn.classList.toggle('muted',isMuted);
+  if(isMuted){
+    stopListening();
+    setCallStatus('Micrófono silenciado');
+  }else{
+    setCallStatus('Te escucho');
+    startListening();
+  }
 };
 
 window.endCall=()=>{
-  callActive=false;isRecording=false;isProcessing=false;isMuted=false;
-  if(silenceAnimation){cancelAnimationFrame(silenceAnimation);silenceAnimation=null;}
-  if(mediaRecorder&&mediaRecorder.state!=='inactive'){try{mediaRecorder.stop();}catch(error){}}mediaRecorder=null;
-  if(currentAudio){currentAudio.pause();currentAudio.currentTime=0;currentAudio.src='';currentAudio=null;}
-  if(currentAudioUrl){URL.revokeObjectURL(currentAudioUrl);currentAudioUrl=null;}
-  if(mediaStream){mediaStream.getTracks().forEach(track=>track.stop());mediaStream=null;}
-  if(audioContext){audioContext.close().catch(()=>{});audioContext=null;analyser=null;analyserData=null;}
-  audioChunks=[];document.getElementById('callOverlay')?.classList.remove('active');document.getElementById('callWave')?.style.setProperty('display','none');
-  const fab=document.getElementById('voiceFab');if(fab&&window.innerWidth<=640)fab.style.display='flex';setCallStatus('');updateVoiceBtn(false);
-};
-
-function setCallStatus(msg){const el=document.getElementById('callStatus');if(el)el.textContent=msg;}
-function updateVoiceBtn(recording){
-  const btn=document.getElementById('voiceBtn'),fab=document.getElementById('voiceFab');if(btn)btn.classList.toggle('recording',recording);if(!fab)return;fab.classList.toggle('recording',recording);
-  fab.innerHTML=recording?`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="7" y="7" width="10" height="10" rx="2"/></svg> Hablando...`:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 0 1 3 3v8a3 3 0 0 1-6 0V4a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> Hablar con AuraX`;
-}
-
-/*
-
-const NGROK = 'https://drained-expand-implosive.ngrok-free.dev';
-
-let callActive = false;
-let isRecording = false;
-let isProcessing = false;
-let isMuted = false;
-
-let mediaStream = null;
-let mediaRecorder = null;
-let audioChunks = [];
-
-let currentAudio = null;
-let currentAudioUrl = null;
-
-let audioContext = null;
-let analyser = null;
-let silenceAnimation = null;
-
-let silenceStarted = null;
-let voiceStarted = false;
-
-const SILENCE_LIMIT = 650;
-const VOICE_THRESHOLD = 10;
-
-window.toggleVoice = async () => {
-  if (!callActive) {
-    await startCall();
-    return;
-  }
-  if (isProcessing) return;
-  if (isRecording) stopRecording();
-  else startRecording();
-};
-
-async function startCall() {
-  try {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setCallStatus('Tu navegador no permite usar el micrófono');
-      return;
-    }
-    mediaStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
-      }
-    });
-    callActive = true;
-    isMuted = false;
-    document.getElementById('callOverlay')?.classList.add('active');
-    const fab = document.getElementById('voiceFab');
-    if (fab) fab.style.display = 'none';
-    setCallStatus('Conectando con AuraX...');
-    updateVoiceBtn(false);
-    setupAudioAnalyser();
-    if (!callActive) return;
-    setCallStatus('Te escucho');
-    startRecording();
-  } catch (error) {
-    console.error('❌ MICRÓFONO:', error);
-    setCallStatus('No se pudo acceder al micrófono');
-    callActive = false;
-  }
-}
-
-function setupAudioAnalyser() {
-  try {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    analyser = audioContext.createAnalyser();
-    analyser.fftSize = 512;
-    analyser.smoothingTimeConstant = 0.7;
-    const source = audioContext.createMediaStreamSource(mediaStream);
-    source.connect(analyser);
-  } catch (e) {
-    console.error('Audio analyser:', e);
-  }
-}
-
-async function startRecording() {
-  if (!callActive || isRecording || isProcessing || isMuted || !mediaStream) return;
-  try {
-    audioChunks = [];
-    let mimeType = 'audio/webm';
-    if (!MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-      mimeType = 'audio/webm';
-    } else {
-      mimeType = 'audio/webm;codecs=opus';
-    }
-    mediaRecorder = new MediaRecorder(mediaStream, { mimeType });
-    mediaRecorder.ondataavailable = event => {
-      if (event.data && event.data.size > 0) audioChunks.push(event.data);
-    };
-    mediaRecorder.onstop = processAudio;
-    mediaRecorder.start(100);
-    isRecording = true;
-    voiceStarted = false;
-    silenceStarted = null;
-    updateVoiceBtn(true);
-    setCallStatus('Te escucho');
-    document.getElementById('callWave')?.style.setProperty('display', 'flex');
-    detectSpeech();
-  } catch (error) {
-    console.error('❌ RECORDING:', error);
-    isRecording = false;
-    setCallStatus('Error con el micrófono');
-  }
-}
-
-function detectSpeech() {
-  if (!callActive || !isRecording || !analyser) return;
-  const data = new Uint8Array(analyser.frequencyBinCount);
-  analyser.getByteFrequencyData(data);
-  let sum = 0;
-  for (let i = 0; i < data.length; i++) sum += data[i];
-  const average = sum / data.length;
-  const speaking = average > VOICE_THRESHOLD;
-  if (speaking) {
-    voiceStarted = true;
-    silenceStarted = null;
-    setCallStatus('Te escucho...');
-  } else if (voiceStarted) {
-    if (!silenceStarted) silenceStarted = Date.now();
-    if (Date.now() - silenceStarted >= SILENCE_LIMIT) {
-      stopRecording();
-      return;
-    }
-  }
-  silenceAnimation = requestAnimationFrame(detectSpeech);
-}
-
-function stopRecording() {
-  if (!isRecording) return;
-  isRecording = false;
-  if (silenceAnimation) {
-    cancelAnimationFrame(silenceAnimation);
-    silenceAnimation = null;
-  }
-  updateVoiceBtn(false);
-  document.getElementById('callWave')?.style.setProperty('display', 'none');
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-}
-
-async function processAudio() {
-  if (!callActive) return;
-  const blob = new Blob(audioChunks, { type: 'audio/webm' });
-  audioChunks = [];
-  if (blob.size < 1500) {
-    if (callActive) setTimeout(() => startRecording(), 300);
-    return;
-  }
-  isProcessing = true;
-  try {
-    setCallStatus('Procesando...');
-    const sttRes = await fetch(NGROK + '/stt', {
-      method: 'POST',
-      headers: {'Content-Type': 'audio/webm', 'ngrok-skip-browser-warning': '1'},
-      body: blob
-    });
-    if (!sttRes.ok) throw new Error(`STT ${sttRes.status}: ${await sttRes.text()}`);
-    const sttData = await sttRes.json();
-    const texto = (sttData.texto || '').trim();
-    console.log('🎤 Usuario:', texto);
-    if (!texto || texto.length < 2) {
-      isProcessing = false;
-      if (callActive) setTimeout(startRecording, 300);
-      return;
-    }
-    setCallStatus('AuraX está pensando...');
-    const chat = chats.find(c => c.id === activeId);
-    const chatRes = await fetch(NGROK + '/chat', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '1'},
-      body: JSON.stringify({
-        mensaje: texto,
-        modelo: 'eternionx',
-        web_search: false,
-        chat_id: activeId,
-        user_id: currentUser?.uid,
-        history: chat ? chat.history.slice(-8) : [],
-        voice_mode: true
-      })
-    });
-    const chatData = await chatRes.json();
-    if (!chatRes.ok) throw new Error(`CHAT ${chatRes.status}: ${chatData.error || 'Error'}`);
-    const respuesta = (chatData.respuesta || chatData.response || '').trim();
-    console.log('🤖 AuraX:', respuesta);
-    if (!respuesta) throw new Error('AuraX no devolvió respuesta');
-    if (chat) {
-      chat.history.push({role: 'user', content: texto});
-      chat.history.push({role: 'assistant', content: respuesta});
-      await saveChat(chat);
-    }
-    appendBubble('user', texto);
-    appendBubble('ai', respuesta);
-    setCallStatus('AuraX está hablando...');
-    document.getElementById('callWave')?.style.setProperty('display', 'flex');
-    const ttsRes = await fetch(NGROK + '/tts', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '1'},
-      body: JSON.stringify({texto: respuesta})
-    });
-    if (!ttsRes.ok) throw new Error(`TTS ${ttsRes.status}: ${await ttsRes.text()}`);
-    const audioBlob = await ttsRes.blob();
-    console.log('🔊 Salome:', audioBlob.size, 'bytes');
-    if (!callActive) return;
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio.src = '';
-      currentAudio = null;
-    }
-    if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
-    currentAudioUrl = URL.createObjectURL(audioBlob);
-    currentAudio = new Audio(currentAudioUrl);
-    currentAudio.volume = 1;
-    currentAudio.onended = () => {
-      document.getElementById('callWave')?.style.setProperty('display', 'none');
-      if (!callActive) return;
-      setCallStatus('Te escucho');
-      isProcessing = false;
-      if (callActive) startRecording();
-    };
-    await currentAudio.play();
-  } catch (error) {
-    console.error('❌ ERROR LLAMADA AURAX:', error);
-    setCallStatus('Error de conexión');
-    isProcessing = false;
-    document.getElementById('callWave')?.style.setProperty('display', 'none');
-    if (callActive) {
-      if (callActive) {
-        setCallStatus('Te escucho');
-        startRecording();
-      }
-    }
-  }
-}
-
-window.toggleMute = () => {
-  isMuted = !isMuted;
-  const btn = document.getElementById('muteBtn');
-  if (btn) btn.classList.toggle('muted', isMuted);
-  if (isMuted) {
-    setCallStatus('Micrófono silenciado');
-    if (isRecording) stopRecording();
-  } else {
-    setCallStatus('Te escucho');
-    if (callActive && !isProcessing && !isRecording) startRecording();
-  }
-};
-
-window.endCall = () => {
   console.log('📞 Finalizando llamada');
-  callActive = false;
-  isRecording = false;
-  isProcessing = false;
-  isMuted = false;
-  if (silenceAnimation) {
-    cancelAnimationFrame(silenceAnimation);
-    silenceAnimation = null;
-  }
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-  mediaRecorder = null;
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio.currentTime = 0;
-    currentAudio.src = '';
-    currentAudio = null;
-  }
-  if (currentAudioUrl) {
-    URL.revokeObjectURL(currentAudioUrl);
-    currentAudioUrl = null;
-  }
-  if (mediaStream) {
-    mediaStream.getTracks().forEach(track => track.stop());
-    mediaStream = null;
-  }
-  if (audioContext) {
-    audioContext.close().catch(() => {});
-    audioContext = null;
-    analyser = null;
-  }
+  callActive=false;
+  isProcessing=false;
+  isMuted=false;
+  stopListening();
+  if(currentAudio){currentAudio.pause();currentAudio.src='';currentAudio=null;}
+  if(currentAudioUrl){URL.revokeObjectURL(currentAudioUrl);currentAudioUrl=null;}
+  if(mediaStream){mediaStream.getTracks().forEach(t=>t.stop());mediaStream=null;}
+  if(audioContext){audioContext.close().catch(()=>{});audioContext=null;analyser=null;}
+  recognition=null;
   document.getElementById('callOverlay')?.classList.remove('active');
-  document.getElementById('callWave')?.style.setProperty('display', 'none');
-  const fab = document.getElementById('voiceFab');
-  if (fab && window.innerWidth <= 640) fab.style.display = 'flex';
+  document.getElementById('callWave')?.style.setProperty('display','none');
+  const fab=document.getElementById('voiceFab');
+  if(fab && window.innerWidth<=640) fab.style.display='flex';
   setCallStatus('');
   updateVoiceBtn(false);
 };
 
-function setCallStatus(msg) {
-  const el = document.getElementById('callStatus');
-  if (el) el.textContent = msg;
+function setCallStatus(msg){
+  const el=document.getElementById('callStatus');
+  if(el) el.textContent=msg;
 }
 
-function updateVoiceBtn(recording) {
-  const btn = document.getElementById('voiceBtn');
-  const fab = document.getElementById('voiceFab');
-  if (btn) btn.classList.toggle('recording', recording);
-  if (!fab) return;
-  fab.classList.toggle('recording', recording);
-  fab.innerHTML = recording ? `
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>
-    Hablando...
-  ` : `
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-    Hablar con AuraX
-  `;
+function updateVoiceBtn(active){
+  const btn=document.getElementById('voiceBtn');
+  const fab=document.getElementById('voiceFab');
+  if(btn) btn.classList.toggle('recording',active);
+  if(!fab) return;
+  fab.classList.toggle('recording',active);
+  fab.innerHTML=active?`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> En llamada`:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 0 1 3 3v8a3 3 0 0 1-6 0V4a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> Hablar con AuraX`;
 }
 
 // ============================================================
 // FIN AURAX — MODO LLAMADA CONTINUA
 // ============================================================
-*/
 </script>
 </body>
 </html>
