@@ -461,8 +461,14 @@ const MODEL_INFO = {
 let loginInProgress=false;
 window.loginWithGoogle = async () => {
   if(loginInProgress) return; loginInProgress=true;
-  try { if(/iP(ad|hone|od)/.test(navigator.userAgent)) await signInWithPopup(auth,provider); else await signInWithRedirect(auth,provider); }
-  catch(e){ console.error(e); } finally{ loginInProgress=false; }
+  try { 
+    await signInWithPopup(auth, provider); 
+  }
+  catch(e){ 
+    console.error(e); 
+    alert('Error: ' + e.message); 
+  } 
+  finally{ loginInProgress=false; }
 };
 window.logout = async () => {
   await signOut(auth); window.removeAttachment();
@@ -656,6 +662,147 @@ window.sendMessage=async()=>{
 // ============================================================
 // AURAX — MODO LLAMADA CONTINUA
 // ============================================================
+
+const NGROK = 'https://drained-expand-implosive.ngrok-free.dev';
+let callActive=false,isRecording=false,isProcessing=false,isMuted=false;
+let mediaStream=null,mediaRecorder=null,audioChunks=[];
+let currentAudio=null,currentAudioUrl=null,audioContext=null,analyser=null,analyserData=null,silenceAnimation=null;
+let silenceStarted=null,voiceStarted=false,voiceStartTime=null,recordingStartedAt=null;
+const SILENCE_LIMIT=900,VOICE_THRESHOLD=14,MIN_VOICE_TIME=250,MIN_RECORDING_TIME=700;
+
+window.toggleVoice=async()=>{
+  if(!callActive){await startCall();return;}
+  if(isProcessing)return;
+  if(isRecording)stopRecording();else startRecording();
+};
+
+async function startCall(){
+  if(callActive)return;
+  try{
+    if(!navigator.mediaDevices?.getUserMedia){setCallStatus('Tu navegador no permite usar el micrófono');return;}
+    setCallStatus('Solicitando micrófono...');
+    mediaStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+    callActive=true;isMuted=false;isProcessing=false;
+    document.getElementById('callOverlay')?.classList.add('active');
+    const fab=document.getElementById('voiceFab');if(fab)fab.style.display='none';
+    updateVoiceBtn(false);setupAudioAnalyser();setCallStatus('Te escucho');
+    setTimeout(()=>{if(callActive&&!isProcessing&&!isRecording&&!isMuted)startRecording();},300);
+  }catch(error){
+    console.error('❌ MICRÓFONO:',error);setCallStatus('No se pudo acceder al micrófono');callActive=false;
+    if(mediaStream){mediaStream.getTracks().forEach(track=>track.stop());mediaStream=null;}
+  }
+}
+
+function setupAudioAnalyser(){
+  try{
+    audioContext=new(window.AudioContext||window.webkitAudioContext)();analyser=audioContext.createAnalyser();
+    analyser.fftSize=512;analyser.smoothingTimeConstant=.65;analyserData=new Uint8Array(analyser.frequencyBinCount);
+    audioContext.createMediaStreamSource(mediaStream).connect(analyser);
+  }catch(error){console.error('❌ Audio analyser:',error);analyser=null;analyserData=null;}
+}
+
+async function startRecording(){
+  if(!callActive||isRecording||isProcessing||isMuted||!mediaStream)return;
+  try{
+    if(audioContext?.state==='suspended')await audioContext.resume();
+    audioChunks=[];let mimeType='';
+    if(MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))mimeType='audio/webm;codecs=opus';
+    else if(MediaRecorder.isTypeSupported('audio/webm'))mimeType='audio/webm';
+    mediaRecorder=mimeType?new MediaRecorder(mediaStream,{mimeType}):new MediaRecorder(mediaStream);
+    mediaRecorder.ondataavailable=event=>{if(event.data?.size>0)audioChunks.push(event.data);};
+    mediaRecorder.onerror=event=>console.error('❌ MediaRecorder:',event);
+    mediaRecorder.onstop=()=>setTimeout(processAudio,50);mediaRecorder.start(100);
+    isRecording=true;voiceStarted=false;voiceStartTime=null;silenceStarted=null;recordingStartedAt=Date.now();
+    updateVoiceBtn(true);setCallStatus('Te escucho');document.getElementById('callWave')?.style.setProperty('display','flex');detectSpeech();
+  }catch(error){
+    console.error('❌ RECORDING:',error);isRecording=false;setCallStatus('Error con el micrófono');
+    setTimeout(()=>{if(callActive&&!isProcessing&&!isRecording&&!isMuted)startRecording();},500);
+  }
+}
+
+function detectSpeech(){
+  if(!callActive||!isRecording||!analyser)return;
+  analyser.getByteFrequencyData(analyserData);let sum=0;
+  for(let i=0;i<analyserData.length;i++)sum+=analyserData[i];
+  const speaking=sum/analyserData.length>VOICE_THRESHOLD;
+  if(speaking){if(!voiceStarted){voiceStarted=true;voiceStartTime=Date.now();}silenceStarted=null;setCallStatus('Te escucho...');}
+  else if(voiceStarted&&Date.now()-voiceStartTime>=MIN_VOICE_TIME){
+    if(!silenceStarted)silenceStarted=Date.now();
+    if(Date.now()-silenceStarted>=SILENCE_LIMIT){stopRecording();return;}
+  }
+  silenceAnimation=requestAnimationFrame(detectSpeech);
+}
+
+function stopRecording(){
+  if(!isRecording)return;isRecording=false;
+  if(silenceAnimation){cancelAnimationFrame(silenceAnimation);silenceAnimation=null;}
+  updateVoiceBtn(false);document.getElementById('callWave')?.style.setProperty('display','none');
+  if(mediaRecorder&&mediaRecorder.state!=='inactive')mediaRecorder.stop();else processAudio();
+}
+
+async function processAudio(){
+  if(!callActive||isProcessing)return;
+  const recordingDuration=Date.now()-(recordingStartedAt||Date.now()),chunks=audioChunks;audioChunks=[];
+  if(!chunks.length){restartListening();return;}
+  const blob=new Blob(chunks,{type:mediaRecorder?.mimeType||'audio/webm'});
+  if(blob.size<1500||recordingDuration<MIN_RECORDING_TIME){restartListening();return;}
+  isProcessing=true;
+  try{
+    setCallStatus('Procesando...');
+    const sttRes=await fetch(NGROK+'/stt',{method:'POST',headers:{'Content-Type':'audio/webm','ngrok-skip-browser-warning':'1'},body:blob});
+    if(!sttRes.ok)throw new Error(`STT ${sttRes.status}: ${await sttRes.text()}`);
+    const sttData=await sttRes.json(),texto=(sttData.texto||sttData.text||sttData.transcription||'').trim();
+    if(!texto||texto.length<2){isProcessing=false;restartListening();return;}
+    setCallStatus('AuraX está pensando...');const chat=chats.find(c=>c.id===activeId);
+    const chatRes=await fetch(NGROK+'/chat',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify({mensaje:texto,modelo:'eternionx',web_search:false,chat_id:activeId,user_id:currentUser?.uid,history:chat?chat.history.slice(-8):[],voice_mode:true})});
+    const chatData=await chatRes.json();if(!chatRes.ok)throw new Error(`CHAT ${chatRes.status}: ${chatData.error||'Error'}`);
+    const respuesta=(chatData.respuesta||chatData.response||'').trim();if(!respuesta)throw new Error('AuraX no devolvió respuesta');
+    if(chat){chat.history.push({role:'user',content:texto});chat.history.push({role:'assistant',content:respuesta});await saveChat(chat);}
+    appendBubble('user',texto);appendBubble('ai',respuesta);setCallStatus('AuraX está hablando...');document.getElementById('callWave')?.style.setProperty('display','flex');
+    const ttsRes=await fetch(NGROK+'/tts',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify({texto:respuesta})});
+    if(!ttsRes.ok)throw new Error(`TTS ${ttsRes.status}: ${await ttsRes.text()}`);
+    const audioBlob=await ttsRes.blob();if(!callActive)return;
+    if(currentAudio){currentAudio.pause();currentAudio.src='';currentAudio=null;}
+    if(currentAudioUrl){URL.revokeObjectURL(currentAudioUrl);currentAudioUrl=null;}
+    currentAudioUrl=URL.createObjectURL(audioBlob);currentAudio=new Audio(currentAudioUrl);currentAudio.volume=1;
+    currentAudio.onended=()=>{document.getElementById('callWave')?.style.setProperty('display','none');if(!callActive)return;isProcessing=false;setCallStatus('Te escucho');setTimeout(()=>{if(callActive&&!isProcessing&&!isRecording&&!isMuted)startRecording();},250);};
+    currentAudio.onerror=error=>{console.error('❌ Error reproduciendo TTS:',error);isProcessing=false;if(callActive)restartListening();};
+    await currentAudio.play();
+  }catch(error){
+    console.error('❌ ERROR LLAMADA AURAX:',error);isProcessing=false;document.getElementById('callWave')?.style.setProperty('display','none');
+    if(callActive){setCallStatus('Error de conexión');setTimeout(()=>{if(callActive&&!isProcessing&&!isRecording&&!isMuted){setCallStatus('Te escucho');startRecording();}},700);}
+  }
+}
+
+function restartListening(){
+  if(!callActive)return;isProcessing=false;if(isMuted){setCallStatus('Micrófono silenciado');return;}setCallStatus('Te escucho');
+  setTimeout(()=>{if(callActive&&!isProcessing&&!isRecording&&!isMuted)startRecording();},300);
+}
+
+window.toggleMute=()=>{isMuted=!isMuted;const btn=document.getElementById('muteBtn');if(btn)btn.classList.toggle('muted',isMuted);
+  if(isMuted){setCallStatus('Micrófono silenciado');if(isRecording)stopRecording();}
+  else{setCallStatus('Te escucho');if(callActive&&!isProcessing&&!isRecording)startRecording();}
+};
+
+window.endCall=()=>{
+  callActive=false;isRecording=false;isProcessing=false;isMuted=false;
+  if(silenceAnimation){cancelAnimationFrame(silenceAnimation);silenceAnimation=null;}
+  if(mediaRecorder&&mediaRecorder.state!=='inactive'){try{mediaRecorder.stop();}catch(error){}}mediaRecorder=null;
+  if(currentAudio){currentAudio.pause();currentAudio.currentTime=0;currentAudio.src='';currentAudio=null;}
+  if(currentAudioUrl){URL.revokeObjectURL(currentAudioUrl);currentAudioUrl=null;}
+  if(mediaStream){mediaStream.getTracks().forEach(track=>track.stop());mediaStream=null;}
+  if(audioContext){audioContext.close().catch(()=>{});audioContext=null;analyser=null;analyserData=null;}
+  audioChunks=[];document.getElementById('callOverlay')?.classList.remove('active');document.getElementById('callWave')?.style.setProperty('display','none');
+  const fab=document.getElementById('voiceFab');if(fab&&window.innerWidth<=640)fab.style.display='flex';setCallStatus('');updateVoiceBtn(false);
+};
+
+function setCallStatus(msg){const el=document.getElementById('callStatus');if(el)el.textContent=msg;}
+function updateVoiceBtn(recording){
+  const btn=document.getElementById('voiceBtn'),fab=document.getElementById('voiceFab');if(btn)btn.classList.toggle('recording',recording);if(!fab)return;fab.classList.toggle('recording',recording);
+  fab.innerHTML=recording?`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="7" y="7" width="10" height="10" rx="2"/></svg> Hablando...`:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 0 1 3 3v8a3 3 0 0 1-6 0V4a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> Hablar con AuraX`;
+}
+
+/*
 
 const NGROK = 'https://drained-expand-implosive.ngrok-free.dev';
 
@@ -968,6 +1115,7 @@ function updateVoiceBtn(recording) {
 // ============================================================
 // FIN AURAX — MODO LLAMADA CONTINUA
 // ============================================================
+*/
 </script>
 </body>
 </html>
