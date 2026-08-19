@@ -49,4 +49,7 @@ if 'json' not in c.split('formats:')[1][:50]:
     c=c.replace('  formats:\n    - html','  formats:\n    - html\n    - json')
     open('/etc/searxng/settings.yml','w').write(c)
 "
+# Instalar searxng en el venv
+cd $SEARXNG_DIR && pip install msgspec && pip install -r requirements.txt
+
 echo "✅ Setup completo. Corre: bash /workspace/AuraX/start.sh"
