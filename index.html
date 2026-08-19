@@ -740,7 +740,11 @@ async function startRecording(){
     mediaRecorder=mimeType?new MediaRecorder(mediaStream,{mimeType}):new MediaRecorder(mediaStream);
     mediaRecorder.ondataavailable=event=>{if(event.data?.size>0)audioChunks.push(event.data);};
     mediaRecorder.onerror=event=>console.error('❌ MediaRecorder:',event);
-    mediaRecorder.onstop=()=>setTimeout(processAudio,50);mediaRecorder.start(100);
+    mediaRecorder.onstop=()=>{
+      console.log('⏹️ Grabación detenida, chunks:',audioChunks.length);
+      setTimeout(processAudio,0);
+    };
+    mediaRecorder.start(100);
     isRecording=true;voiceStarted=false;voiceStartTime=null;silenceStarted=null;recordingStartedAt=Date.now();
     updateVoiceBtn(true);setCallStatus('Te escucho');document.getElementById('callWave')?.style.setProperty('display','flex');detectSpeech();
   }catch(error){
@@ -772,16 +776,19 @@ function stopRecording(){
 async function processAudio(){
   if(!callActive||isProcessing)return;
   const recordingDuration=Date.now()-(recordingStartedAt||Date.now()),chunks=audioChunks;audioChunks=[];
-  if(!chunks.length){restartListening();return;}
+  if(!chunks.length){console.warn('⚠️ No llegaron chunks de audio');restartListening();return;}
   const blob=new Blob(chunks,{type:mediaRecorder?.mimeType||'audio/webm'});
-  if(blob.size<1500||recordingDuration<MIN_RECORDING_TIME){restartListening();return;}
+  console.log('🎧 Audio grabado:',blob.size,'bytes',recordingDuration,'ms');
+  if(blob.size<1500||recordingDuration<MIN_RECORDING_TIME){console.warn('⚠️ Audio demasiado corto');restartListening();return;}
   isProcessing=true;
   try{
     setCallStatus('Procesando...');
+    console.log('📤 Enviando audio a /stt');
     const sttRes=await fetch(NGROK+'/stt',{method:'POST',headers:{'Content-Type':'audio/webm','ngrok-skip-browser-warning':'1'},body:blob});
     if(!sttRes.ok)throw new Error(`STT ${sttRes.status}: ${await sttRes.text()}`);
     const sttData=await sttRes.json(),texto=(sttData.texto||sttData.text||sttData.transcription||'').trim();
-    if(!texto||texto.length<2){isProcessing=false;restartListening();return;}
+    console.log('🎤 Whisper:',texto||'(sin texto)');
+    if(!texto||texto.length<2){console.warn('⚠️ Whisper no detectó una frase');isProcessing=false;restartListening();return;}
     setCallStatus('AuraX está pensando...');const chat=chats.find(c=>c.id===activeId);
     const chatRes=await fetch(NGROK+'/chat',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify({mensaje:texto,modelo:'eternionx',web_search:false,chat_id:activeId,user_id:currentUser?.uid,history:chat?chat.history.slice(-8):[],voice_mode:true})});
     const chatData=await chatRes.json();if(!chatRes.ok)throw new Error(`CHAT ${chatRes.status}: ${chatData.error||'Error'}`);
@@ -796,9 +803,10 @@ async function processAudio(){
     currentAudioUrl=URL.createObjectURL(audioBlob);currentAudio=new Audio(currentAudioUrl);currentAudio.volume=1;
     currentAudio.onended=()=>{document.getElementById('callWave')?.style.setProperty('display','none');if(!callActive)return;isProcessing=false;setCallStatus('Te escucho');setTimeout(()=>{if(callActive&&!isProcessing&&!isRecording&&!isMuted)startRecording();},250);};
     currentAudio.onerror=error=>{console.error('❌ Error reproduciendo TTS:',error);isProcessing=false;if(callActive)restartListening();};
+    console.log('▶️ Reproduciendo TTS');
     await currentAudio.play();
   }catch(error){
-    console.error('❌ ERROR LLAMADA AURAX:',error);isProcessing=false;document.getElementById('callWave')?.style.setProperty('display','none');
+    console.error('❌ ERROR COMPLETO processAudio:',error);isProcessing=false;document.getElementById('callWave')?.style.setProperty('display','none');
     if(callActive){setCallStatus('Error de conexión');setTimeout(()=>{if(callActive&&!isProcessing&&!isRecording&&!isMuted){setCallStatus('Te escucho');startRecording();}},700);}
   }
 }
