@@ -654,280 +654,205 @@ window.sendMessage=async()=>{
 };
 
 // ============================================================
-// AURAX — MODO LLAMADA REAL (escucha continua + interrupción)
+// AURAX — MODO LLAMADA: respuesta por streaming + TTS por frases
 // ============================================================
-
 const NGROK = 'https://drained-expand-implosive.ngrok-free.dev';
+let callActive=false, isMuted=false, mediaStream=null, audioContext=null, analyser=null;
+let recognition=null, recognitionRunning=false, recognitionRestart=null;
+let currentAudio=null, currentAudioUrl=null;
+let voiceAbort=null, voiceBusy=false, userIsSpeaking=false, speechCommitTimer=null;
+let audioQueue=[], playingQueue=false, currentReplyText='';
+const SpeechRecognitionAPI=window.SpeechRecognition||window.webkitSpeechRecognition;
 
-let callActive = false;
-let isProcessing = false;
-let isMuted = false;
-let mediaStream = null;
-let audioContext = null;
-let analyser = null;
-let currentAudio = null;
-let currentAudioUrl = null;
-let recognition = null;
-let recognitionRunning = false;
-let recognitionRestart = null;
-let lastFinalTranscript = '';
-let userIsSpeaking = false;
-let interruptionTimer = null;
+window.toggleVoice=async()=>{ if(!callActive) await startCall(); };
 
-const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-window.toggleVoice = async () => {
-  if (!callActive) await startCall();
-};
-
-async function startCall() {
-  if (callActive) return;
-  try {
-    if (!SpeechRecognitionAPI) {
-      setCallStatus('Chrome no permite voz continua aquí');
-      return;
-    }
-    mediaStream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation:true, noiseSuppression:true, autoGainControl:true }
-    });
-    callActive = true;
-    isMuted = false;
+async function startCall(){
+  if(callActive) return;
+  try{
+    if(!SpeechRecognitionAPI){ setCallStatus('Tu navegador no soporta voz continua'); return; }
+    mediaStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+    callActive=true; isMuted=false;
     document.getElementById('callOverlay')?.classList.add('active');
-    const fab=document.getElementById('voiceFab');
-    if (fab) fab.style.display='none';
-    setupAudioAnalyser();
-    setupContinuousRecognition();
-    setCallStatus('Te escucho');
-    updateVoiceBtn(true);
-    startListening();
-    monitorUserSpeech();
-  } catch(e) {
-    console.error('❌ LLAMADA:',e);
-    setCallStatus('No se pudo iniciar la llamada');
-    endCall();
-  }
+    const fab=document.getElementById('voiceFab'); if(fab) fab.style.display='none';
+    setupAudioAnalyser(); setupContinuousRecognition();
+    updateVoiceBtn(true); setCallStatus('Te escucho'); startListening();
+  }catch(e){ console.error('LLAMADA:',e); endCall(); setCallStatus('No se pudo iniciar'); }
 }
 
 function setupAudioAnalyser(){
   try{
     audioContext=new (window.AudioContext||window.webkitAudioContext)();
-    analyser=audioContext.createAnalyser();
-    analyser.fftSize=512;
-    analyser.smoothingTimeConstant=.75;
-    const source=audioContext.createMediaStreamSource(mediaStream);
-    source.connect(analyser);
+    analyser=audioContext.createAnalyser(); analyser.fftSize=512; analyser.smoothingTimeConstant=.65;
+    audioContext.createMediaStreamSource(mediaStream).connect(analyser);
   }catch(e){ console.warn('Audio analyser:',e); }
 }
 
 function setupContinuousRecognition(){
   recognition=new SpeechRecognitionAPI();
-  recognition.lang='es-CO';
-  recognition.continuous=true;
-  recognition.interimResults=true;
-  recognition.maxAlternatives=1;
-
-  recognition.onstart=()=>{
-    recognitionRunning=true;
-    setCallStatus(currentAudio ? 'AuraX está hablando · te escucho' : 'Te escucho');
-  };
-
-  recognition.onresult=event=>{
-    let finalText='';
-    let interim='';
+  recognition.lang='es-CO'; recognition.continuous=true; recognition.interimResults=true; recognition.maxAlternatives=1;
+  recognition.onstart=()=>{ recognitionRunning=true; if(!voiceBusy&&!currentAudio) setCallStatus('Te escucho'); };
+  recognition.onresult=(event)=>{
+    let finalText='', interim='';
     for(let i=event.resultIndex;i<event.results.length;i++){
-      const text=event.results[i][0].transcript;
-      if(event.results[i].isFinal) finalText+=text+' ';
-      else interim+=text;
+      const t=event.results[i][0].transcript.trim();
+      if(event.results[i].isFinal) finalText+=(t+' '); else interim+=(t+' ');
     }
-
+    const live=(finalText||interim).trim();
     if(interim.trim()){
       userIsSpeaking=true;
+      // Barge-in: cortar inmediatamente cuando realmente empezamos a hablar.
       if(currentAudio) interruptAuraX();
-      setCallStatus('Te escucho...');
+      clearTimeout(speechCommitTimer);
+      // No esperamos el onend de SpeechRecognition: 380 ms de silencio es suficiente.
+      speechCommitTimer=setTimeout(()=>{
+        const t=live.trim();
+        if(t && t.length>=2) commitVoiceText(t);
+      },380);
     }
-
     if(finalText.trim()){
-      const text=finalText.trim();
-      if(text===lastFinalTranscript) return;
-      lastFinalTranscript=text;
-      userIsSpeaking=false;
-      handleVoiceTurn(text);
+      clearTimeout(speechCommitTimer);
+      const t=finalText.trim();
+      if(t.length>=2) commitVoiceText(t);
     }
   };
-
-  recognition.onerror=event=>{
-    console.warn('🎙️ SpeechRecognition:',event.error);
+  recognition.onerror=(e)=>{
     recognitionRunning=false;
-    if(callActive && !isMuted && event.error!=='not-allowed' && event.error!=='service-not-allowed'){
-      clearTimeout(recognitionRestart);
-      recognitionRestart=setTimeout(startListening,250);
+    if(callActive&&!isMuted&&e.error!=='not-allowed'&&e.error!=='service-not-allowed'){
+      clearTimeout(recognitionRestart); recognitionRestart=setTimeout(startListening,80);
     }
   };
-
   recognition.onend=()=>{
     recognitionRunning=false;
-    if(callActive && !isMuted){
-      clearTimeout(recognitionRestart);
-      recognitionRestart=setTimeout(startListening,120);
-    }
+    if(callActive&&!isMuted){ clearTimeout(recognitionRestart); recognitionRestart=setTimeout(startListening,80); }
   };
 }
 
 function startListening(){
-  if(!callActive || isMuted || !recognition || recognitionRunning) return;
+  if(!callActive||isMuted||!recognition||recognitionRunning) return;
   try{ recognition.start(); }catch(e){}
 }
-
 function stopListening(){
-  clearTimeout(recognitionRestart);
-  if(recognition && recognitionRunning){
-    try{ recognition.stop(); }catch(e){}
-  }
+  clearTimeout(recognitionRestart); clearTimeout(speechCommitTimer);
+  if(recognition&&recognitionRunning){ try{recognition.stop();}catch(e){} }
   recognitionRunning=false;
 }
 
-function monitorUserSpeech(){
-  if(!callActive || !analyser) return;
-  const data=new Uint8Array(analyser.frequencyBinCount);
-  analyser.getByteFrequencyData(data);
-  let sum=0;
-  for(let i=0;i<data.length;i++) sum+=data[i];
-  const avg=sum/data.length;
-  // Sirve como barge-in rápido: la transcripción confirma después la voz real.
-  if(currentAudio && avg>18){
-    clearTimeout(interruptionTimer);
-    interruptionTimer=setTimeout(()=>{
-      if(currentAudio) interruptAuraX();
-    },180);
-  }
-  requestAnimationFrame(monitorUserSpeech);
+function commitVoiceText(text){
+  if(!callActive||isMuted||!text||text.length<2) return;
+  // Evita que un mismo final/interim se mande varias veces.
+  if(voiceBusy && text===currentReplyText) return;
+  userIsSpeaking=false;
+  handleVoiceTurn(text);
 }
 
 function interruptAuraX(){
-  if(!currentAudio) return;
-  console.log('🛑 Barge-in: Juanito interrumpió a AuraX');
-  currentAudio.pause();
-  currentAudio.currentTime=0;
-  currentAudio.src='';
-  currentAudio=null;
+  if(voiceAbort){ try{voiceAbort.abort();}catch(e){} voiceAbort=null; }
+  audioQueue=[]; playingQueue=false;
+  if(currentAudio){ try{currentAudio.pause();currentAudio.currentTime=0;currentAudio.src='';}catch(e){} currentAudio=null; }
   if(currentAudioUrl){ URL.revokeObjectURL(currentAudioUrl); currentAudioUrl=null; }
-  setCallStatus('Te escucho');
-  isProcessing=false;
-  startListening();
+  document.getElementById('callWave')?.style.setProperty('display','none');
+  if(callActive&&!isMuted) setCallStatus('Te escucho');
+}
+
+function findSentence(buffer){
+  // Empieza a hablar en cuanto hay una frase completa; no espera toda la respuesta.
+  const m=buffer.match(/^([\s\S]*?[.!?…]+)(?:\s+|$)/);
+  return m ? {sentence:m[1].trim(),rest:buffer.slice(m[0].length)} : null;
+}
+
+function queueSentence(sentence){
+  sentence=(sentence||'').replace(/\s+/g,' ').trim();
+  if(!sentence) return;
+  audioQueue.push(sentence);
+  playNextSentence();
+}
+
+async function playNextSentence(){
+  if(playingQueue||!callActive||!audioQueue.length) return;
+  playingQueue=true;
+  const text=audioQueue.shift();
+  try{
+    if(!callActive) return;
+    setCallStatus('AuraX habla');
+    document.getElementById('callWave')?.style.setProperty('display','flex');
+    const res=await fetch(NGROK+'/tts_fast',{
+      method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},
+      body:JSON.stringify({texto:text}),signal:voiceAbort?.signal
+    });
+    if(!res.ok) throw new Error('TTS '+res.status);
+    const blob=await res.blob();
+    if(!callActive||voiceAbort?.signal.aborted) return;
+    currentAudioUrl=URL.createObjectURL(blob); currentAudio=new Audio(currentAudioUrl); currentAudio.volume=1;
+    await currentAudio.play();
+    await new Promise(resolve=>{ currentAudio.onended=resolve; currentAudio.onerror=resolve; });
+  }catch(e){ if(e.name!=='AbortError') console.warn('TTS:',e); }
+  finally{
+    if(currentAudioUrl){URL.revokeObjectURL(currentAudioUrl);currentAudioUrl=null;}
+    currentAudio=null; playingQueue=false;
+    document.getElementById('callWave')?.style.setProperty('display','none');
+    if(audioQueue.length) playNextSentence(); else if(callActive&&!userIsSpeaking) setCallStatus('Te escucho');
+  }
 }
 
 async function handleVoiceTurn(text){
-  if(!callActive || isMuted || !text || text.length<2) return;
-  isProcessing=true;
+  if(!callActive||isMuted||!text||text.length<2) return;
+  // Una nueva frase cancela cualquier respuesta anterior inmediatamente.
   interruptAuraX();
-  setCallStatus('AuraX te escucha');
-  console.log('🎤 Usuario:',text);
-
+  voiceBusy=true; currentReplyText=''; currentReplyText=text;
+  setCallStatus('Te escucho');
   const chat=chats.find(c=>c.id===activeId);
-  if(chat){
-    chat.history.push({role:'user',content:text});
-    appendBubble('user',text);
-  }
-
+  if(chat){ chat.history.push({role:'user',content:text}); appendBubble('user',text); }
+  voiceAbort=new AbortController();
+  let buffer='', full='';
   try{
-    setCallStatus('AuraX está respondiendo...');
-    const chatRes=await fetch(NGROK+'/chat',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},
-      body:JSON.stringify({
-        mensaje:text,
-        modelo:'eternionx',
-        web_search:false,
-        chat_id:activeId,
-        user_id:currentUser?.uid,
-        history:chat ? chat.history.slice(-8) : [],
-        voice_mode:true
-      })
+    const res=await fetch(NGROK+'/chat_stream',{
+      method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},
+      body:JSON.stringify({mensaje:text,chat_id:activeId,user_id:currentUser?.uid,history:chat?chat.history.slice(-8):[],voice_mode:true,username:currentUser?.displayName||'Juanito'}),
+      signal:voiceAbort.signal
     });
-    const chatData=await chatRes.json();
-    if(!chatRes.ok) throw new Error(`CHAT ${chatRes.status}: ${chatData.error||'Error'}`);
-    const respuesta=(chatData.respuesta||chatData.response||'').trim();
-    if(!respuesta) throw new Error('AuraX no devolvió respuesta');
-    console.log('🤖 AuraX:',respuesta);
-
-    if(chat){
-      chat.history.push({role:'assistant',content:respuesta});
-      await saveChat(chat);
+    if(!res.ok) throw new Error('CHAT '+res.status);
+    const reader=res.body.getReader(), decoder=new TextDecoder(); let pending='';
+    while(true){
+      const {value,done}=await reader.read(); if(done) break;
+      pending+=decoder.decode(value,{stream:true});
+      const lines=pending.split('\n'); pending=lines.pop()||'';
+      for(const line of lines){
+        if(!line.trim()) continue;
+        const obj=JSON.parse(line);
+        if(obj.error) throw new Error(obj.error);
+        if(obj.token){
+          full+=obj.token; buffer+=obj.token;
+          let hit; while((hit=findSentence(buffer))){ queueSentence(hit.sentence); buffer=hit.rest; }
+        }
+      }
     }
-    appendBubble('ai',respuesta);
-
-    // IMPORTANTE: no apagamos el micrófono mientras AuraX habla.
-    // La escucha sigue activa para permitir interrupciones.
-    await speakAuraX(respuesta);
+    if(buffer.trim()) queueSentence(buffer.trim());
+    if(!full.trim()) throw new Error('Respuesta vacía');
+    if(chat){ chat.history.push({role:'assistant',content:full.trim()}); saveChat(chat); }
+    appendBubble('ai',full.trim());
   }catch(e){
-    console.error('❌ ERROR LLAMADA:',e);
-    setCallStatus('Hubo un problema, te escucho');
+    if(e.name!=='AbortError') { console.error('VOICE:',e); setCallStatus('Te escucho'); }
   }finally{
-    isProcessing=false;
-    if(callActive && !isMuted) setCallStatus(currentAudio?'AuraX está hablando...':'Te escucho');
-    startListening();
+    voiceBusy=false; voiceAbort=null; currentReplyText=''; startListening();
   }
-}
-
-async function speakAuraX(text){
-  if(!callActive || !text) return;
-  setCallStatus('AuraX está hablando...');
-  document.getElementById('callWave')?.style.setProperty('display','flex');
-
-  const ttsRes=await fetch(NGROK+'/tts',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},
-    body:JSON.stringify({texto:text})
-  });
-  if(!ttsRes.ok) throw new Error(`TTS ${ttsRes.status}: ${await ttsRes.text()}`);
-  const blob=await ttsRes.blob();
-  if(!callActive) return;
-
-  if(currentAudio) interruptAuraX();
-  if(currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
-  currentAudioUrl=URL.createObjectURL(blob);
-  currentAudio=new Audio(currentAudioUrl);
-  currentAudio.volume=1;
-  currentAudio.onended=()=>{
-    if(currentAudioUrl){URL.revokeObjectURL(currentAudioUrl);currentAudioUrl=null;}
-    currentAudio=null;
-    document.getElementById('callWave')?.style.setProperty('display','none');
-    if(callActive) setCallStatus('Te escucho');
-  };
-  // SpeechRecognition permanece activo: el usuario puede interrumpir.
-  await currentAudio.play();
 }
 
 window.toggleMute=()=>{
-  isMuted=!isMuted;
-  const btn=document.getElementById('muteBtn');
-  if(btn) btn.classList.toggle('muted',isMuted);
-  if(isMuted){
-    stopListening();
-    setCallStatus('Micrófono silenciado');
-  }else{
-    setCallStatus('Te escucho');
-    startListening();
-  }
+  isMuted=!isMuted; document.getElementById('muteBtn')?.classList.toggle('muted',isMuted);
+  if(isMuted){ interruptAuraX(); stopListening(); setCallStatus('Micrófono silenciado'); }
+  else { setCallStatus('Te escucho'); startListening(); }
 };
 
 window.endCall=()=>{
-  console.log('📞 Finalizando llamada');
-  callActive=false;
-  isProcessing=false;
-  isMuted=false;
-  stopListening();
-  if(currentAudio){currentAudio.pause();currentAudio.src='';currentAudio=null;}
-  if(currentAudioUrl){URL.revokeObjectURL(currentAudioUrl);currentAudioUrl=null;}
+  callActive=false; isMuted=false; voiceBusy=false;
+  interruptAuraX(); stopListening();
   if(mediaStream){mediaStream.getTracks().forEach(t=>t.stop());mediaStream=null;}
   if(audioContext){audioContext.close().catch(()=>{});audioContext=null;analyser=null;}
   recognition=null;
   document.getElementById('callOverlay')?.classList.remove('active');
   document.getElementById('callWave')?.style.setProperty('display','none');
-  const fab=document.getElementById('voiceFab');
-  if(fab && window.innerWidth<=640) fab.style.display='flex';
-  setCallStatus('');
-  updateVoiceBtn(false);
+  const fab=document.getElementById('voiceFab'); if(fab&&window.innerWidth<=640) fab.style.display='flex';
+  setCallStatus(''); updateVoiceBtn(false);
 };
 
 function setCallStatus(msg){
