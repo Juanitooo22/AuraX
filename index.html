@@ -672,7 +672,7 @@ window.endCall = () => {
   if(currentAudio){ currentAudio.pause(); currentAudio.src=''; currentAudio=null; }
   document.getElementById('callOverlay').classList.remove('active');
   if(window.innerWidth<=640) document.getElementById('voiceFab').style.display='flex';
-  setCallStatus('Escuchando...'); document.getElementById('callWave').style.display='none';
+  setCallStatus(''); document.getElementById('callWave').style.display='none';
   updateVoiceBtn(false);
 };
 
@@ -688,9 +688,9 @@ async function startRecording(){
     mediaRecorder=new MediaRecorder(stream,{mimeType:'audio/webm'});
     audioChunks=[]; mediaRecorder.ondataavailable=e=>{ if(e.data.size>0) audioChunks.push(e.data); };
     mediaRecorder.onstop=processAudio; mediaRecorder.start(100);
-    isRecording=true; setCallStatus('Escuchando...'); updateVoiceBtn(true);
+    isRecording=true; setCallStatus(''); updateVoiceBtn(true);
     setupSilenceDetection(stream);
-  }catch(e){ setCallStatus('Error: permite el micrófono'); }
+  }catch(e){ setCallStatus(''); }
 }
 
 function setupSilenceDetection(stream){
@@ -701,7 +701,7 @@ function setupSilenceDetection(stream){
     if(!isRecording) return;
     analyser.getByteFrequencyData(data);
     const avg=data.reduce((a,b)=>a+b,0)/data.length;
-    if(avg<8){ if(!silenceStart) silenceStart=Date.now(); else if(Date.now()-silenceStart>800){ stopRecording(); return; } }
+    if(avg<8){ if(!silenceStart) silenceStart=Date.now(); else if(Date.now()-silenceStart>1500){ stopRecording(); return; } }
     else silenceStart=null;
     requestAnimationFrame(check);
   }
@@ -711,34 +711,28 @@ function setupSilenceDetection(stream){
 function stopRecording(){
   if(!isRecording) return; isRecording=false;
   if(mediaRecorder&&mediaRecorder.state!=='inactive') mediaRecorder.stop();
-  updateVoiceBtn(false); setCallStatus('...');
+  updateVoiceBtn(false); setCallStatus('');
 }
 
 async function processAudio(){
   const blob=new Blob(audioChunks,{type:'audio/webm'});
   if(blob.size<1000){ if(callActive) setTimeout(startRecording,500); return; }
   try{
-    setCallStatus('AuraX escucha...');
+    setCallStatus('');
     const sttRes=await fetch(NGROK+'/stt',{method:'POST',headers:{'Content-Type':'audio/webm','ngrok-skip-browser-warning':'1'},body:blob});
     const {texto}=await sttRes.json();
     if(!texto||texto.trim().length<2){ if(callActive) setTimeout(startRecording,300); return; }
-    setCallStatus('AuraX pensando...'); document.getElementById('callWave').style.display='flex';
-    // Backchannel + chat en paralelo
+    setCallStatus(''); document.getElementById('callWave').style.display='flex';
     const chat=chats.find(c=>c.id===activeId);
-    const [quickRes, chatRes] = await Promise.all([
-      fetch(NGROK+'/tts_quick', {method:'POST', headers:{'ngrok-skip-browser-warning':'1'}}),
-      fetch(NGROK+'/chat',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify({mensaje:texto,chat_id:activeId,user_id:currentUser?.uid,history:chat?chat.history.slice(-4):[],voice_mode:true})})
-    ]);
-    const quickBlob = await quickRes.blob();
-    new Audio(URL.createObjectURL(quickBlob)).play();
+    const chatRes = await fetch(NGROK+'/chat',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify({mensaje:texto,chat_id:activeId,user_id:currentUser?.uid,history:chat?chat.history.slice(-4):[],voice_mode:true})});
     const {respuesta}=await chatRes.json();
     if(chat){ chat.history.push({role:'user',content:texto}); chat.history.push({role:'assistant',content:respuesta}); }
-    setCallStatus('AuraX hablando...');
+    setCallStatus('');
     const ttsRes=await fetch(NGROK+'/tts',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify({texto:respuesta.slice(0,500)})});
     const audioBlob=await ttsRes.blob();
     currentAudio=new Audio(URL.createObjectURL(audioBlob)); if(!callActive) return; currentAudio.play();
-    currentAudio.onended=()=>{ document.getElementById('callWave').style.display='none'; if(callActive){ setCallStatus('Escuchando...'); setTimeout(startRecording,300); } };
-  }catch(e){ console.error(e); setCallStatus('Error, intenta de nuevo'); if(callActive) setTimeout(startRecording,1000); }
+    currentAudio.onended=()=>{ document.getElementById('callWave').style.display='none'; if(callActive){ setCallStatus(''); setTimeout(startRecording,300); } };
+  }catch(e){ console.error(e); setCallStatus(''); if(callActive) setTimeout(startRecording,1000); }
 }
 
 function setCallStatus(msg){ const el=document.getElementById('callStatus'); if(el) el.textContent=msg; }
