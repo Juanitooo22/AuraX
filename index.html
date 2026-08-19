@@ -656,6 +656,9 @@ window.sendMessage=async()=>{
 // ===== SISTEMA DE VOZ =====
 const NGROK = 'https://drained-expand-implosive.ngrok-free.dev';
 let mediaRecorder=null, audioChunks=[], isRecording=false, isMuted=false, callActive=false, currentAudio=null;
+let activeMicStream=null;
+let voiceGeneration=0;
+let processingAudio=false;
 
 window.toggleVoice = () => { if(!callActive) startCall(); else if(isRecording) stopRecording(); else startRecording(); };
 
@@ -667,12 +670,31 @@ async function startCall(){
 }
 
 window.endCall = () => {
-  callActive=false; isRecording=false;
-  if(mediaRecorder&&mediaRecorder.state!=='inactive') mediaRecorder.stop();
-  if(currentAudio){ currentAudio.pause(); currentAudio.src=''; currentAudio=null; }
+  callActive=false;
+  isRecording=false;
+  processingAudio=false;
+  voiceGeneration++;
+
+  if(mediaRecorder && mediaRecorder.state!=='inactive'){
+    mediaRecorder.onstop=null;
+    mediaRecorder.stop();
+  }
+
+  if(activeMicStream){
+    activeMicStream.getTracks().forEach(track => track.stop());
+    activeMicStream=null;
+  }
+
+  if(currentAudio){
+    currentAudio.pause();
+    currentAudio.src='';
+    currentAudio=null;
+  }
+
   document.getElementById('callOverlay').classList.remove('active');
   if(window.innerWidth<=640) document.getElementById('voiceFab').style.display='flex';
-  setCallStatus(''); document.getElementById('callWave').style.display='none';
+  setCallStatus('');
+  document.getElementById('callWave').style.display='none';
   updateVoiceBtn(false);
 };
 
@@ -682,15 +704,56 @@ window.toggleMute = () => {
 };
 
 async function startRecording(){
-  if(isRecording) return;
+  if(isRecording || !callActive || processingAudio) return;
+
   try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    // Cerrar cualquier stream anterior antes de abrir otro.
+    if(activeMicStream){
+      activeMicStream.getTracks().forEach(track => track.stop());
+      activeMicStream=null;
+    }
+
+    const stream=await navigator.mediaDevices.getUserMedia({
+      audio:{
+        echoCancellation:true,
+        noiseSuppression:true,
+        autoGainControl:true,
+        channelCount:1
+      }
+    });
+
+    activeMicStream=stream;
+
     mediaRecorder=new MediaRecorder(stream,{mimeType:'audio/webm'});
-    audioChunks=[]; mediaRecorder.ondataavailable=e=>{ if(e.data.size>0) audioChunks.push(e.data); };
-    mediaRecorder.onstop=processAudio; mediaRecorder.start(100);
-    isRecording=true; setCallStatus(''); updateVoiceBtn(true);
+    audioChunks=[];
+
+    mediaRecorder.ondataavailable=e=>{
+      if(e.data.size>0) audioChunks.push(e.data);
+    };
+
+    mediaRecorder.onstop=()=>{
+      // El micrófono deja de estar abierto inmediatamente.
+      if(activeMicStream){
+        activeMicStream.getTracks().forEach(track => track.stop());
+        activeMicStream=null;
+      }
+
+      processAudio();
+    };
+
+    mediaRecorder.start(100);
+
+    isRecording=true;
+    setCallStatus('');
+    updateVoiceBtn(true);
+
     setupSilenceDetection(stream);
-  }catch(e){ setCallStatus(''); }
+
+  }catch(e){
+    console.error('❌ ERROR MIC:',e);
+    setCallStatus('');
+    isRecording=false;
+  }
 }
 
 function setupSilenceDetection(stream){
@@ -709,30 +772,175 @@ function setupSilenceDetection(stream){
 }
 
 function stopRecording(){
-  if(!isRecording) return; isRecording=false;
-  if(mediaRecorder&&mediaRecorder.state!=='inactive') mediaRecorder.stop();
-  updateVoiceBtn(false); setCallStatus('');
+  if(!isRecording) return;
+
+  isRecording=false;
+
+  if(mediaRecorder&&mediaRecorder.state!=='inactive'){
+    mediaRecorder.stop();
+  }
+
+  updateVoiceBtn(false);
+  setCallStatus('');
 }
 
 async function processAudio(){
+  const myGeneration=++voiceGeneration;
+
+  // Evita dos procesos de audio simultáneos.
+  if(processingAudio) return;
+
+  processingAudio=true;
+
   const blob=new Blob(audioChunks,{type:'audio/webm'});
-  if(blob.size<1000){ if(callActive) setTimeout(startRecording,500); return; }
+  audioChunks=[];
+
+  if(blob.size<1000){
+    processingAudio=false;
+    if(callActive && myGeneration===voiceGeneration){
+      setTimeout(startRecording,500);
+    }
+    return;
+  }
+
   try{
     setCallStatus('');
-    const sttRes=await fetch(NGROK+'/stt',{method:'POST',headers:{'Content-Type':'audio/webm','ngrok-skip-browser-warning':'1'},body:blob});
-    const {texto}=await sttRes.json();
-    if(!texto||texto.trim().length<2){ if(callActive) setTimeout(startRecording,300); return; }
-    setCallStatus(''); document.getElementById('callWave').style.display='flex';
-    const chat=chats.find(c=>c.id===activeId);
-    const chatRes = await fetch(NGROK+'/chat',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify({mensaje:texto,chat_id:activeId,user_id:currentUser?.uid,history:chat?chat.history.slice(-5):[],voice_mode:true})});
-    const {respuesta}=await chatRes.json();
-    if(chat){ chat.history.push({role:'user',content:texto}); chat.history.push({role:'assistant',content:respuesta}); }
+
+    const sttRes=await fetch(NGROK+'/stt',{
+      method:'POST',
+      headers:{
+        'Content-Type':'audio/webm',
+        'ngrok-skip-browser-warning':'1'
+      },
+      body:blob
+    });
+
+    const sttData=await sttRes.json();
+    const texto=(sttData.texto||'').trim();
+
+    if(!callActive || myGeneration!==voiceGeneration){
+      processingAudio=false;
+      return;
+    }
+
+    if(!texto || texto.length<2){
+      processingAudio=false;
+
+      if(callActive && myGeneration===voiceGeneration){
+        setTimeout(startRecording,300);
+      }
+
+      return;
+    }
+
+    console.log('🎤 Tú:',texto);
+
     setCallStatus('');
-    const ttsRes=await fetch(NGROK+'/tts',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify({texto:respuesta.slice(0,500)})});
+    document.getElementById('callWave').style.display='flex';
+
+    const chat=chats.find(c=>c.id===activeId);
+
+    const chatRes=await fetch(NGROK+'/chat',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'ngrok-skip-browser-warning':'1'
+      },
+      body:JSON.stringify({
+        mensaje:texto,
+        chat_id:activeId,
+        user_id:currentUser?.uid,
+        history:chat?chat.history.slice(-5):[],
+        voice_mode:true
+      })
+    });
+
+    const chatData=await chatRes.json();
+    const respuesta=(chatData.respuesta||'').trim();
+
+    if(!callActive || myGeneration!==voiceGeneration){
+      processingAudio=false;
+      return;
+    }
+
+    console.log('🤖 AuraX:',respuesta);
+
+    if(chat){
+      chat.history.push({role:'user',content:texto});
+      chat.history.push({role:'assistant',content:respuesta});
+    }
+
+    setCallStatus('');
+
+    const ttsRes=await fetch(NGROK+'/tts',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'ngrok-skip-browser-warning':'1'
+      },
+      body:JSON.stringify({
+        texto:respuesta.slice(0,500)
+      })
+    });
+
+    if(!callActive || myGeneration!==voiceGeneration){
+      processingAudio=false;
+      return;
+    }
+
     const audioBlob=await ttsRes.blob();
-    currentAudio=new Audio(URL.createObjectURL(audioBlob)); if(!callActive) return; currentAudio.play();
-    currentAudio.onended=()=>{ document.getElementById('callWave').style.display='none'; if(callActive){ setCallStatus(''); setTimeout(startRecording,300); } };
-  }catch(e){ console.error(e); setCallStatus(''); if(callActive) setTimeout(startRecording,1000); }
+
+    if(!callActive || myGeneration!==voiceGeneration){
+      processingAudio=false;
+      return;
+    }
+
+    const audioUrl=URL.createObjectURL(audioBlob);
+
+    currentAudio=new Audio(audioUrl);
+
+    currentAudio.onended=()=>{
+      URL.revokeObjectURL(audioUrl);
+
+      if(currentAudio){
+        currentAudio=null;
+      }
+
+      document.getElementById('callWave').style.display='none';
+
+      processingAudio=false;
+
+      if(callActive && myGeneration===voiceGeneration){
+        setCallStatus('');
+        setTimeout(startRecording,250);
+      }
+    };
+
+    currentAudio.onerror=()=>{
+      URL.revokeObjectURL(audioUrl);
+
+      currentAudio=null;
+      processingAudio=false;
+
+      document.getElementById('callWave').style.display='none';
+
+      if(callActive && myGeneration===voiceGeneration){
+        setTimeout(startRecording,500);
+      }
+    };
+
+    await currentAudio.play();
+
+  }catch(e){
+    console.error('❌ VOICE ERROR:',e);
+
+    processingAudio=false;
+
+    if(callActive && myGeneration===voiceGeneration){
+      document.getElementById('callWave').style.display='none';
+      setTimeout(startRecording,1000);
+    }
+  }
 }
 
 function setCallStatus(msg){ const el=document.getElementById('callStatus'); if(el) el.textContent=msg; }
