@@ -661,7 +661,7 @@ let callActive=false, isMuted=false, mediaStream=null, audioContext=null, analys
 let recognition=null, recognitionRunning=false, recognitionRestart=null;
 let currentAudio=null, currentAudioUrl=null;
 let voiceAbort=null, voiceBusy=false, userIsSpeaking=false, speechCommitTimer=null;
-let audioQueue=[], playingQueue=false, currentReplyText='';
+let audioQueue=[], playingQueue=false, currentReplyText='', playbackGeneration=0;
 const SpeechRecognitionAPI=window.SpeechRecognition||window.webkitSpeechRecognition;
 
 window.toggleVoice=async()=>{ if(!callActive) await startCall(); };
@@ -746,10 +746,14 @@ function commitVoiceText(text){
 }
 
 function interruptAuraX(){
+  // Invalidamos cualquier reproductor anterior. Esto evita que una promesa
+  // vieja de TTS vuelva a arrancar audio después de una interrupción.
+  playbackGeneration++;
   if(voiceAbort){ try{voiceAbort.abort();}catch(e){} voiceAbort=null; }
-  audioQueue=[]; playingQueue=false;
-  if(currentAudio){ try{currentAudio.pause();currentAudio.currentTime=0;currentAudio.src='';}catch(e){} currentAudio=null; }
+  audioQueue=[];
+  if(currentAudio){ try{currentAudio.onended=null;currentAudio.onerror=null;currentAudio.pause();currentAudio.currentTime=0;currentAudio.src='';}catch(e){} currentAudio=null; }
   if(currentAudioUrl){ URL.revokeObjectURL(currentAudioUrl); currentAudioUrl=null; }
+  playingQueue=false;
   document.getElementById('callWave')?.style.setProperty('display','none');
   if(callActive&&!isMuted) setCallStatus('Te escucho');
 }
@@ -763,34 +767,58 @@ function findSentence(buffer){
 function queueSentence(sentence){
   sentence=(sentence||'').replace(/\s+/g,' ').trim();
   if(!sentence) return;
-  audioQueue.push(sentence);
+  const gen=playbackGeneration;
+  // Empezamos a generar TTS AHORA, no cuando termine el audio anterior.
+  // Así el siguiente fragmento queda listo mientras AuraX está hablando.
+  const promise=fetch(NGROK+'/tts_fast',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},
+    body:JSON.stringify({texto:sentence}),
+    signal:voiceAbort?.signal
+  }).then(res=>{
+    if(!res.ok) throw new Error('TTS '+res.status);
+    return res.blob();
+  });
+  audioQueue.push({promise,gen});
   playNextSentence();
 }
 
 async function playNextSentence(){
   if(playingQueue||!callActive||!audioQueue.length) return;
+  const gen=playbackGeneration;
+  const item=audioQueue.shift();
   playingQueue=true;
-  const text=audioQueue.shift();
   try{
-    if(!callActive) return;
+    if(!callActive || gen!==playbackGeneration) return;
     setCallStatus('AuraX habla');
     document.getElementById('callWave')?.style.setProperty('display','flex');
-    const res=await fetch(NGROK+'/tts_fast',{
-      method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},
-      body:JSON.stringify({texto:text}),signal:voiceAbort?.signal
-    });
-    if(!res.ok) throw new Error('TTS '+res.status);
-    const blob=await res.blob();
-    if(!callActive||voiceAbort?.signal.aborted) return;
-    currentAudioUrl=URL.createObjectURL(blob); currentAudio=new Audio(currentAudioUrl); currentAudio.volume=1;
+
+    const blob=await item.promise;
+
+    if(!callActive || gen!==playbackGeneration || voiceAbort?.signal.aborted) return;
+
+    currentAudioUrl=URL.createObjectURL(blob);
+    currentAudio=new Audio(currentAudioUrl);
+    currentAudio.preload='auto';
+    currentAudio.volume=1;
+
     await currentAudio.play();
-    await new Promise(resolve=>{ currentAudio.onended=resolve; currentAudio.onerror=resolve; });
-  }catch(e){ if(e.name!=='AbortError') console.warn('TTS:',e); }
-  finally{
-    if(currentAudioUrl){URL.revokeObjectURL(currentAudioUrl);currentAudioUrl=null;}
-    currentAudio=null; playingQueue=false;
-    document.getElementById('callWave')?.style.setProperty('display','none');
-    if(audioQueue.length) playNextSentence(); else if(callActive&&!userIsSpeaking) setCallStatus('Te escucho');
+    await new Promise(resolve=>{
+      const a=currentAudio;
+      a.onended=resolve;
+      a.onerror=resolve;
+    });
+  }catch(e){
+    if(e.name!=='AbortError') console.warn('TTS:',e);
+  }finally{
+    if(gen===playbackGeneration){
+      if(currentAudioUrl){URL.revokeObjectURL(currentAudioUrl);currentAudioUrl=null;}
+      currentAudio=null;
+      playingQueue=false;
+      document.getElementById('callWave')?.style.setProperty('display','none');
+      if(audioQueue.length) playNextSentence();
+      else if(callActive&&!userIsSpeaking) setCallStatus('Te escucho');
+    }
   }
 }
 
