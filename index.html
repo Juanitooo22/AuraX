@@ -653,144 +653,327 @@ window.sendMessage=async()=>{
   finally{ window.removeAttachment(); isLoading=false; document.getElementById('sendBtn').disabled=false; inputEl.focus(); }
 };
 
-// ===== SISTEMA DE VOZ =====
+// ============================================================
+// AURAX — MODO LLAMADA CONTINUA
+// ============================================================
+
 const NGROK = 'https://drained-expand-implosive.ngrok-free.dev';
-let mediaRecorder=null, audioChunks=[], isRecording=false, isMuted=false, callActive=false, currentAudio=null;
 
-window.toggleVoice = () => { if(!callActive) startCall(); else if(isRecording) stopRecording(); else startRecording(); };
+let callActive = false;
+let isRecording = false;
+let isProcessing = false;
+let isMuted = false;
 
-async function startCall(){
-  callActive=true;
-  document.getElementById('callOverlay').classList.add('active');
-  document.getElementById('voiceFab').style.display='none';
-  await startRecording();
+let mediaStream = null;
+let mediaRecorder = null;
+let audioChunks = [];
+
+let currentAudio = null;
+let currentAudioUrl = null;
+
+let audioContext = null;
+let analyser = null;
+let silenceAnimation = null;
+
+let silenceStarted = null;
+let voiceStarted = false;
+
+const SILENCE_LIMIT = 1300;
+const VOICE_THRESHOLD = 10;
+
+window.toggleVoice = async () => {
+  if (!callActive) {
+    await startCall();
+    return;
+  }
+  if (isProcessing) return;
+  if (isRecording) stopRecording();
+  else startRecording();
+};
+
+async function startCall() {
+  try {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCallStatus('Tu navegador no permite usar el micrófono');
+      return;
+    }
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
+    });
+    callActive = true;
+    isMuted = false;
+    document.getElementById('callOverlay')?.classList.add('active');
+    const fab = document.getElementById('voiceFab');
+    if (fab) fab.style.display = 'none';
+    setCallStatus('Conectando con AuraX...');
+    updateVoiceBtn(false);
+    setupAudioAnalyser();
+    setTimeout(() => {
+      if (!callActive) return;
+      setCallStatus('Te escucho');
+      startRecording();
+    }, 500);
+  } catch (error) {
+    console.error('❌ MICRÓFONO:', error);
+    setCallStatus('No se pudo acceder al micrófono');
+    callActive = false;
+  }
 }
 
+function setupAudioAnalyser() {
+  try {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.7;
+    const source = audioContext.createMediaStreamSource(mediaStream);
+    source.connect(analyser);
+  } catch (e) {
+    console.error('Audio analyser:', e);
+  }
+}
+
+async function startRecording() {
+  if (!callActive || isRecording || isProcessing || isMuted || !mediaStream) return;
+  try {
+    audioChunks = [];
+    let mimeType = 'audio/webm';
+    if (!MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+      mimeType = 'audio/webm';
+    } else {
+      mimeType = 'audio/webm;codecs=opus';
+    }
+    mediaRecorder = new MediaRecorder(mediaStream, { mimeType });
+    mediaRecorder.ondataavailable = event => {
+      if (event.data && event.data.size > 0) audioChunks.push(event.data);
+    };
+    mediaRecorder.onstop = processAudio;
+    mediaRecorder.start(100);
+    isRecording = true;
+    voiceStarted = false;
+    silenceStarted = null;
+    updateVoiceBtn(true);
+    setCallStatus('Te escucho');
+    document.getElementById('callWave')?.style.setProperty('display', 'flex');
+    detectSpeech();
+  } catch (error) {
+    console.error('❌ RECORDING:', error);
+    isRecording = false;
+    setCallStatus('Error con el micrófono');
+  }
+}
+
+function detectSpeech() {
+  if (!callActive || !isRecording || !analyser) return;
+  const data = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(data);
+  let sum = 0;
+  for (let i = 0; i < data.length; i++) sum += data[i];
+  const average = sum / data.length;
+  const speaking = average > VOICE_THRESHOLD;
+  if (speaking) {
+    voiceStarted = true;
+    silenceStarted = null;
+    setCallStatus('Te escucho...');
+  } else if (voiceStarted) {
+    if (!silenceStarted) silenceStarted = Date.now();
+    if (Date.now() - silenceStarted >= SILENCE_LIMIT) {
+      stopRecording();
+      return;
+    }
+  }
+  silenceAnimation = requestAnimationFrame(detectSpeech);
+}
+
+function stopRecording() {
+  if (!isRecording) return;
+  isRecording = false;
+  if (silenceAnimation) {
+    cancelAnimationFrame(silenceAnimation);
+    silenceAnimation = null;
+  }
+  updateVoiceBtn(false);
+  document.getElementById('callWave')?.style.setProperty('display', 'none');
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+}
+
+async function processAudio() {
+  if (!callActive) return;
+  const blob = new Blob(audioChunks, { type: 'audio/webm' });
+  audioChunks = [];
+  if (blob.size < 1500) {
+    if (callActive) setTimeout(() => startRecording(), 300);
+    return;
+  }
+  isProcessing = true;
+  try {
+    setCallStatus('Procesando...');
+    const sttRes = await fetch(NGROK + '/stt', {
+      method: 'POST',
+      headers: {'Content-Type': 'audio/webm', 'ngrok-skip-browser-warning': '1'},
+      body: blob
+    });
+    if (!sttRes.ok) throw new Error(`STT ${sttRes.status}: ${await sttRes.text()}`);
+    const sttData = await sttRes.json();
+    const texto = (sttData.texto || '').trim();
+    console.log('🎤 Usuario:', texto);
+    if (!texto || texto.length < 2) {
+      isProcessing = false;
+      if (callActive) setTimeout(startRecording, 300);
+      return;
+    }
+    setCallStatus('AuraX está pensando...');
+    const chat = chats.find(c => c.id === activeId);
+    const chatRes = await fetch(NGROK + '/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '1'},
+      body: JSON.stringify({
+        mensaje: texto,
+        modelo: 'eternionx',
+        web_search: false,
+        chat_id: activeId,
+        user_id: currentUser?.uid,
+        history: chat ? chat.history.slice(-8) : [],
+        voice_mode: true
+      })
+    });
+    const chatData = await chatRes.json();
+    if (!chatRes.ok) throw new Error(`CHAT ${chatRes.status}: ${chatData.error || 'Error'}`);
+    const respuesta = (chatData.respuesta || chatData.response || '').trim();
+    console.log('🤖 AuraX:', respuesta);
+    if (!respuesta) throw new Error('AuraX no devolvió respuesta');
+    if (chat) {
+      chat.history.push({role: 'user', content: texto});
+      chat.history.push({role: 'assistant', content: respuesta});
+      await saveChat(chat);
+    }
+    appendBubble('user', texto);
+    appendBubble('ai', respuesta);
+    setCallStatus('AuraX está hablando...');
+    document.getElementById('callWave')?.style.setProperty('display', 'flex');
+    const ttsRes = await fetch(NGROK + '/tts', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '1'},
+      body: JSON.stringify({texto: respuesta})
+    });
+    if (!ttsRes.ok) throw new Error(`TTS ${ttsRes.status}: ${await ttsRes.text()}`);
+    const audioBlob = await ttsRes.blob();
+    console.log('🔊 Salome:', audioBlob.size, 'bytes');
+    if (!callActive) return;
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.src = '';
+      currentAudio = null;
+    }
+    if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
+    currentAudioUrl = URL.createObjectURL(audioBlob);
+    currentAudio = new Audio(currentAudioUrl);
+    currentAudio.volume = 1;
+    currentAudio.onended = () => {
+      document.getElementById('callWave')?.style.setProperty('display', 'none');
+      if (!callActive) return;
+      setCallStatus('Te escucho');
+      isProcessing = false;
+      setTimeout(() => {
+        if (callActive) startRecording();
+      }, 250);
+    };
+    await currentAudio.play();
+  } catch (error) {
+    console.error('❌ ERROR LLAMADA AURAX:', error);
+    setCallStatus('Error de conexión');
+    isProcessing = false;
+    document.getElementById('callWave')?.style.setProperty('display', 'none');
+    if (callActive) {
+      setTimeout(() => {
+        if (callActive) {
+          setCallStatus('Te escucho');
+          startRecording();
+        }
+      }, 1200);
+    }
+  }
+}
+
+window.toggleMute = () => {
+  isMuted = !isMuted;
+  const btn = document.getElementById('muteBtn');
+  if (btn) btn.classList.toggle('muted', isMuted);
+  if (isMuted) {
+    setCallStatus('Micrófono silenciado');
+    if (isRecording) stopRecording();
+  } else {
+    setCallStatus('Te escucho');
+    if (callActive && !isProcessing && !isRecording) startRecording();
+  }
+};
+
 window.endCall = () => {
-  callActive=false; isRecording=false;
-  if(mediaRecorder&&mediaRecorder.state!=='inactive') mediaRecorder.stop();
-  if(currentAudio){ currentAudio.pause(); currentAudio.src=''; currentAudio=null; }
-  document.getElementById('callOverlay').classList.remove('active');
-  if(window.innerWidth<=640) document.getElementById('voiceFab').style.display='flex';
-  setCallStatus(''); document.getElementById('callWave').style.display='none';
+  console.log('📞 Finalizando llamada');
+  callActive = false;
+  isRecording = false;
+  isProcessing = false;
+  isMuted = false;
+  if (silenceAnimation) {
+    cancelAnimationFrame(silenceAnimation);
+    silenceAnimation = null;
+  }
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  mediaRecorder = null;
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    currentAudio.src = '';
+    currentAudio = null;
+  }
+  if (currentAudioUrl) {
+    URL.revokeObjectURL(currentAudioUrl);
+    currentAudioUrl = null;
+  }
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(track => track.stop());
+    mediaStream = null;
+  }
+  if (audioContext) {
+    audioContext.close().catch(() => {});
+    audioContext = null;
+    analyser = null;
+  }
+  document.getElementById('callOverlay')?.classList.remove('active');
+  document.getElementById('callWave')?.style.setProperty('display', 'none');
+  const fab = document.getElementById('voiceFab');
+  if (fab && window.innerWidth <= 640) fab.style.display = 'flex';
+  setCallStatus('');
   updateVoiceBtn(false);
 };
 
-window.toggleMute = () => {
-  isMuted=!isMuted; document.getElementById('muteBtn').classList.toggle('muted',isMuted);
-  if(mediaRecorder){ if(isMuted&&mediaRecorder.state==='recording') mediaRecorder.pause(); else if(!isMuted&&mediaRecorder.state==='paused') mediaRecorder.resume(); }
-};
-
-async function startRecording(){
-  if(isRecording) return;
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-    mediaRecorder=new MediaRecorder(stream,{mimeType:'audio/webm'});
-    audioChunks=[]; mediaRecorder.ondataavailable=e=>{ if(e.data.size>0) audioChunks.push(e.data); };
-    mediaRecorder.onstop=processAudio; mediaRecorder.start(100);
-    isRecording=true; setCallStatus(''); updateVoiceBtn(true);
-    setupSilenceDetection(stream);
-  }catch(e){ setCallStatus(''); }
+function setCallStatus(msg) {
+  const el = document.getElementById('callStatus');
+  if (el) el.textContent = msg;
 }
 
-function setupSilenceDetection(stream){
-  const ctx=new AudioContext(); const analyser=ctx.createAnalyser();
-  ctx.createMediaStreamSource(stream).connect(analyser); analyser.fftSize=512;
-  const data=new Uint8Array(analyser.frequencyBinCount); let silenceStart=null;
-  function check(){
-    if(!isRecording) return;
-    analyser.getByteFrequencyData(data);
-    const avg=data.reduce((a,b)=>a+b,0)/data.length;
-    if(avg<8){ if(!silenceStart) silenceStart=Date.now(); else if(Date.now()-silenceStart>1500){ stopRecording(); return; } }
-    else silenceStart=null;
-    requestAnimationFrame(check);
-  }
-  check();
+function updateVoiceBtn(recording) {
+  const btn = document.getElementById('voiceBtn');
+  const fab = document.getElementById('voiceFab');
+  if (btn) btn.classList.toggle('recording', recording);
+  if (!fab) return;
+  fab.classList.toggle('recording', recording);
+  fab.innerHTML = recording ? `
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>
+    Hablando...
+  ` : `
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+    Hablar con AuraX
+  `;
 }
 
-function stopRecording(){
-  if(!isRecording) return; isRecording=false;
-  if(mediaRecorder&&mediaRecorder.state!=='inactive') mediaRecorder.stop();
-  updateVoiceBtn(false); setCallStatus('');
-}
-
-async function processAudio(){
-  const blob=new Blob(audioChunks,{type:'audio/webm'});
-  if(blob.size<1000){ if(callActive) setTimeout(startRecording,500); return; }
-  try{
-    setCallStatus('');
-    const sttRes=await fetch(NGROK+'/stt',{method:'POST',headers:{'Content-Type':'audio/webm','ngrok-skip-browser-warning':'1'},body:blob});
-    if(!sttRes.ok){
-      throw new Error(`STT ${sttRes.status}: ${await sttRes.text()}`);
-    }
-    const {texto}=await sttRes.json();
-    if(!texto||texto.trim().length<2){ if(callActive) setTimeout(startRecording,300); return; }
-    setCallStatus(''); document.getElementById('callWave').style.display='flex';
-    const chat=chats.find(c=>c.id===activeId);
-    const chatRes = await fetch(NGROK+'/chat',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify({mensaje:texto,chat_id:activeId,user_id:currentUser?.uid,history:chat?chat.history.slice(-5):[],voice_mode:true})});
-    const chatData = await chatRes.json();
-    const respuesta = chatData.respuesta;
-    console.log('🐬 Dolphin:', respuesta);
-    if(!chatRes.ok){
-      throw new Error(`Chat ${chatRes.status}: ${chatData.error||'respuesta no válida'}`);
-    }
-    if(!respuesta){
-      throw new Error('AuraX no devolvió respuesta');
-    }
-    if(chat){ chat.history.push({role:'user',content:texto}); chat.history.push({role:'assistant',content:respuesta}); }
-    // =========================
-    // 3. SALOME TTS
-    // =========================
-    setCallStatus('AuraX está hablando...');
-    document.getElementById('callWave').style.display='flex';
-    const ttsRes = await fetch(NGROK+'/tts',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'ngrok-skip-browser-warning':'1'
-      },
-      body:JSON.stringify({
-        texto:respuesta.slice(0,500)
-      })
-    });
-    if(!ttsRes.ok){
-      throw new Error(`TTS ${ttsRes.status}: ${await ttsRes.text()}`);
-    }
-    const audioBlob = await ttsRes.blob();
-    console.log(
-      '🔊 Salome:',
-      audioBlob.size,
-      'bytes'
-    );
-    currentAudio = new Audio(
-      URL.createObjectURL(audioBlob)
-    );
-    if(!callActive) return;
-    await currentAudio.play();
-    currentAudio.onended = ()=>{
-      document.getElementById('callWave').style.display='none';
-      if(callActive){
-        setCallStatus('');
-        setTimeout(startRecording,300);
-      }
-    };
-  }catch(e){
-    console.error('❌ ERROR VOZ AURAX:',e);
-    setCallStatus('Error de voz');
-    document.getElementById('callWave').style.display='none';
-    if(callActive){
-      setTimeout(startRecording,1000);
-    }
-  }
-}
-
-function setCallStatus(msg){ const el=document.getElementById('callStatus'); if(el) el.textContent=msg; }
-function updateVoiceBtn(rec){
-  const btn=document.getElementById('voiceBtn'); const fab=document.getElementById('voiceFab');
-  if(btn) btn.classList.toggle('recording',rec);
-  if(fab){ fab.classList.toggle('recording',rec); fab.innerHTML=rec?'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> Toca para parar':'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> Presiona para hablar'; }
-}
-// ===== FIN VOZ =====
+// ============================================================
+// FIN AURAX — MODO LLAMADA CONTINUA
+// ============================================================
 </script>
 </body>
 </html>
