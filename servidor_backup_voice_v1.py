@@ -593,32 +593,16 @@ def stt():
         return r
     """Convierte audio a texto con Whisper"""
     try:
-        import subprocess
-        import uuid
         audio_data = request.data
-        uid = str(uuid.uuid4())[:8]
-        input_path = f'/tmp/input_{uid}.webm'
-        output_path = f'/tmp/output_{uid}.wav'
-        with open(input_path, 'wb') as f:
+        with open('/tmp/input_audio.wav', 'wb') as f:
             f.write(audio_data)
-        subprocess.run([
-            'ffmpeg', '-y', '-i', input_path,
-            '-ar', '16000', '-ac', '1',
-            '-c:a', 'pcm_s16le', output_path
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        
         from faster_whisper import WhisperModel
         model = WhisperModel("small", device="cuda", compute_type="float16")
-        segments, info = model.transcribe(output_path, language="es", vad_filter=True, beam_size=1)
-        texto = " ".join(segment.text.strip() for segment in segments).strip()
-        try:
-            os.remove(input_path)
-            os.remove(output_path)
-        except:
-            pass
-        print(f"🎤 STT: {texto}")
-        return jsonify({'texto': texto, 'language': info.language})
+        segments, _ = model.transcribe('/tmp/input_audio.wav', language="es")
+        texto = " ".join([s.text for s in segments])
+        return jsonify({'texto': texto.strip()})
     except Exception as e:
-        print(f'❌ ERROR STT: {e}')
         return jsonify({'error': str(e)}), 500
 
 
