@@ -701,7 +701,7 @@ function setupSilenceDetection(stream){
     if(!isRecording) return;
     analyser.getByteFrequencyData(data);
     const avg=data.reduce((a,b)=>a+b,0)/data.length;
-    if(avg<8){ if(!silenceStart) silenceStart=Date.now(); else if(Date.now()-silenceStart>1500){ stopRecording(); return; } }
+    if(avg<8){ if(!silenceStart) silenceStart=Date.now(); else if(Date.now()-silenceStart>800){ stopRecording(); return; } }
     else silenceStart=null;
     requestAnimationFrame(check);
   }
