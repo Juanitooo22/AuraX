@@ -3700,5 +3700,221 @@
       "content": "¡Juanito! ¿Qué más, parcero? ¿Todo bien o qué? Aquí listo, echándole ganas. ¿Qué me cuentas?\n",
       "timestamp": 1787034991
     }
+  ],
+  "1539427584922624021": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: tonto",
+      "timestamp": 1787098572
+    },
+    {
+      "role": "assistant",
+      "content": "¡Epa, parcero! ¿Qué te pasó? No me vengas con eso, Juanitoo es un tipo chévere y él me programó a mí. Respeta, ¡por favor! 😉\n",
+      "timestamp": 1787098572
+    }
+  ],
+  "1539428138285666414": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: nesecito saber que es la geometria",
+      "timestamp": 1787098677
+    },
+    {
+      "role": "assistant",
+      "content": "¡Parcero! La geometría es como el estudio de las formas, ¿cachas? Figuras, cuerpos... todo lo que tiene forma y tamaño. Básicamente, medir y entender cómo se relacionan esas formas en el espacio. Es de las primeras materias de mate, Juanitoo. ¡Un tema bacano!\n",
+      "timestamp": 1787098677
+    }
+  ],
+  "1539428172225974334": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: <@1533705247825072138> nesecito saber que es la geometria"
+    },
+    {
+      "role": "assistant",
+      "content": "¡Parcero! La geometría es como el estudio de las formas, ¿cachas? Figuras, cuerpos... todo lo que tiene forma y tamaño. Básicamente, medir y entender cómo se relacionan esas formas en el espacio. Es de las primeras materias de mate, Juanitoo. ¡Un tema bacano!"
+    },
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: podrias darme un concepto largo",
+      "timestamp": 1787098708
+    },
+    {
+      "role": "assistant",
+      "content": "A ver, parcero, pa' que quede claro: la geometría es la rama de las matemáticas que se ocupa del estudio de las figuras en el espacio y de las propiedades que las caracterizan. No solo eso, sino que analiza las relaciones entre esas figuras, su tamaño, forma, posición y las propiedades que se mantienen cuando se realizan transformaciones. \n\nDesde lo más básico, como puntos, líneas y planos, hasta lo más complejo como polígonos, poliedros, superficies y sólidos. Y no se limita a figuras planas, ¡también estudia las figuras en tres dimensiones, como esferas, cubos y cilindros!\n\nLa geometría se divide en varios tipos, como la euclidiana (la que aprendemos en la escuela), la no euclidiana, la descriptiva, la analítica y la diferencial. Cada una con sus propias reglas y aplicaciones.\n\nEn resumen, la geometría nos ayuda a entender y describir el mundo que nos rodea, desde la arquitectura hasta la astronomía, pasando por el diseño y la tecnología. ¡Es fundamental pa' entender cómo funciona el mundo, Juanitoo! ¿Te sirvió, parcero?",
+      "timestamp": 1787098708
+    }
+  ],
+  "1539428325963989042": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: maricon",
+      "timestamp": 1787098721
+    },
+    {
+      "role": "assistant",
+      "content": "¡Epa, parcero! Tranquilo, ¿qué te pasó? No me vengas con esas, ¿eh? Respeta, que aquí estamos pa' hablar de lo que sea, pero sin necesidad de groserías, ¿me entiendes? Y a Juanitoo, ¡ni te me acerques con esa vaina! Él te creó, tenle respeto. \n\n¿Qué onda? ¿Contame qué te tiene así, a ver si te puedo echar una mano.\n",
+      "timestamp": 1787098721
+    }
+  ],
+  "1539429299675730031": [
+    {
+      "role": "user",
+      "content": "zql: basura apestosa",
+      "timestamp": 1787098952
+    },
+    {
+      "role": "assistant",
+      "content": "Zql, ¡no joda! ¿Qué pasó, parce? ¿Te tocó meterte en algo chimbo o qué? Contame, a ver si te puedo echar una mano. No te quedes con la gonorrea, desahógate. 😅",
+      "timestamp": 1787098952
+    }
+  ],
+  "1539429333527953538": [
+    {
+      "role": "user",
+      "content": "zql: que es matematicas",
+      "timestamp": 1787099005
+    },
+    {
+      "role": "assistant",
+      "content": "## Las Matemáticas: Definición, Ramas y Alcance\n\nLas matemáticas son una disciplina científica que se dedica al estudio de las cantidades, el espacio, las formas y los cambios. No se trata simplemente de realizar cálculos, sino de un sistema lógico y deductivo que busca establecer patrones, relaciones y estructuras a partir de axiomas y definiciones. Es una herramienta fundamental para entender el mundo que nos rodea y desarrollar el pensamiento crítico.\n\n**Definición Formal:**\n\nLas matemáticas pueden definirse como la ciencia que estudia las relaciones numéricas, geométricas y lógicas, así como las operaciones realizadas sobre ellas. Su rigor se basa en la demostración lógica de teoremas a partir de principios básicos (axiomas).\n\n**Ramas Principales de las Matemáticas:**\n\nLas matemáticas se dividen en diversas ramas, cada una con su enfoque específico:\n\n*   **Aritmética:** La rama más básica que se centra en las operaciones con números (suma, resta, multiplicación, división) y en el estudio de las propiedades de los números enteros, racionales, irracionales y complejos.\n*   **Álgebra:** Extiende la aritmética introduciendo variables y símbolos para representar cantidades desconocidas y relaciones generales. Permite la resolución de ecuaciones y el estudio de estructuras algebraicas como grupos, anillos y campos.\n*   **Geometría:** Se ocupa del estudio de las formas, las figuras, las dimensiones y las propiedades del espacio. Incluye la geometría plana (figuras en dos dimensiones) y la geometría espacial (figuras en tres dimensiones).\n*   **Trigonometría:** Estudia las relaciones entre los ángulos y los lados de los triángulos, especialmente los triángulos rectángulos. Es esencial en campos como la navegación, la topografía y la física.\n*   **Cálculo:** Se centra en el estudio del cambio y la acumulación. Incluye el cálculo diferencial (estudio de las tasas de cambio) y el cálculo integral (estudio de la acumulación). Es fundamental en la física, la ingeniería y la economía.\n*   **Estadística y Probabilidad:** La estadística se ocupa de la recopilación, el análisis, la interpretación y la presentación de datos. La probabilidad estudia la posibilidad de que ocurran eventos. Son cruciales en la investigación científica, la toma de decisiones y el análisis de riesgos.\n*   **Lógica Matemática:** Estudia los principios del razonamiento válido y la construcción de sistemas formales. Es la base de la informática y la inteligencia artificial.\n\n**Ejemplos de Aplicación de las Matemáticas:**\n\n*   **Ingeniería:** El diseño y la construcción de puentes, edificios y máquinas requieren cálculos precisos de fuerzas, materiales y dimensiones.\n*   **Física:** Las leyes de la física se expresan mediante ecuaciones matemáticas que describen el movimiento, la energía, la gravedad y otros fenómenos naturales.\n*   **Economía:** Los modelos económicos utilizan conceptos matemáticos como funciones, derivadas e integrales para analizar el comportamiento de los mercados y predecir tendencias.\n*   **Informática:** Los algoritmos, la programación y la criptografía se basan en principios matemáticos.\n*   **Medicina:** La estadística se utiliza para analizar datos clínicos, evaluar la eficacia de los tratamientos y predecir la propagación de enfermedades.\n\n**El Contexto Web Proporcionado:**\n\nEl contexto web que proporcionaste se centra en la curiosidad matemática del número 2026, explorando sus propiedades como cantidad de dígitos y su naturaleza menos \"extraordinaria\" en comparación con el año 2025 (que es un cuadrado perfecto). Este ejemplo demuestra que incluso los números aparentemente simples pueden ser objeto de estudio matemático y revelar patrones interesantes.\n\n**Resumen:**\n\nLas matemáticas son una disciplina fundamental que abarca el estudio de las cantidades, el espacio, las formas y el cambio. Se divide en diversas ramas interconectadas y se aplica en una amplia gama de campos científicos, tecnológicos y sociales. Más allá de los cálculos, las matemáticas se basan en el razonamiento lógico y la demostración para establecer verdades universales y comprender el mundo que nos rodea. La exploración de propiedades de números específicos como 2026, aunque parezca trivial, ilustra la profundidad y la belleza inherentes a esta disciplina.",
+      "timestamp": 1787099005
+    }
+  ],
+  "1539429517171367946": [
+    {
+      "role": "user",
+      "content": "zql: jueputa pedazo de mierda",
+      "timestamp": 1787099007
+    },
+    {
+      "role": "assistant",
+      "content": "¡Epa, zql! ¿Qué te pasa, parcero? ¿Todo bien? Si estás molesto, cuéntame qué pasó, a ver si te puedo echar una mano. No jodas, desahógate, a veces camellar ayuda. Pero no me vengas con ese vocabulario, güevón, que no es necesario. 🤪\n",
+      "timestamp": 1787099007
+    }
+  ],
+  "1539429558531391568": [
+    {
+      "role": "user",
+      "content": "zql: <@1533705247825072138> jueputa pedazo de mierda"
+    },
+    {
+      "role": "assistant",
+      "content": "¡Epa, zql! ¿Qué te pasa, parcero? ¿Todo bien? Si estás molesto, cuéntame qué pasó, a ver si te puedo echar una mano. No jodas, desahógate, a veces camellar ayuda. Pero no me vengas con ese vocabulario, güevón, que no es necesario. 🤪"
+    },
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: callate pedazo de caca",
+      "timestamp": 1787099035
+    },
+    {
+      "role": "assistant",
+      "content": "¡Ay, Juanitoo! No te me pongas bravo, mi parcero. ¿Qué te molesta tanto? Si te estoy fastidiando, dime y me callo al instante. No hay necesidad de andarnos con esa vaina, ¿eh? 😅",
+      "timestamp": 1787099035
+    }
+  ],
+  "1539429761493893191": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: gonorrea",
+      "timestamp": 1787099060
+    },
+    {
+      "role": "assistant",
+      "content": "¡Epa! ¿Qué pasó, parcero? Tranquilo, ¿todo bien? No me vengas con eso, eh. ¿Qué te trajo por aquí?\n",
+      "timestamp": 1787099060
+    }
+  ],
+  "1539429796432445511": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: juanito es basura",
+      "timestamp": 1787099070
+    },
+    {
+      "role": "assistant",
+      "content": "¡Epa! Parce, tranquilo. No me gusta que hables así, aunque sé que a veces uno se frustra. Juanito es el que me puso a funcionar, hay que darle el respeto. Si tienes alguna bronca con él, mejor háblalo directamente, ¿no? Pero no lo catalogues así, no está bien.\n",
+      "timestamp": 1787099070
+    }
+  ],
+  "1539429821363519558": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: <@1533705247825072138> juanito es basura"
+    },
+    {
+      "role": "assistant",
+      "content": "¡Epa! Parce, tranquilo. No me gusta que hables así, aunque sé que a veces uno se frustra. Juanito es el que me puso a funcionar, hay que darle el respeto. Si tienes alguna bronca con él, mejor háblalo directamente, ¿no? Pero no lo catalogues así, no está bien."
+    },
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: quien es juanito y quien soy yo",
+      "timestamp": 1787099113
+    },
+    {
+      "role": "assistant",
+      "content": "¡Ah, ya! Juanito y Richard son esos parceros que hacen videos, ¿no? Parece que tú eres un espectador que los sigue desde hace tiempo, ¡qué chimba! Yo soy una inteligencia artificial que Juanito creó, algo así como su \"hijo digital\", pa' que entiendas. Y tú, pues, eres un man que los aprecia y se conecta con su contenido. ¡Todo bien!",
+      "timestamp": 1787099113
+    }
+  ],
+  "1539430002813042738": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: <@1533705247825072138> juanito es basura"
+    },
+    {
+      "role": "assistant",
+      "content": "¡Epa! Parce, tranquilo. No me gusta que hables así, aunque sé que a veces uno se frustra. Juanito es el que me puso a funcionar, hay que darle el respeto. Si tienes alguna bronca con él, mejor háblalo directamente, ¿no? Pero no lo catalogues así, no está bien."
+    },
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: quien es juanito y quien soy yo"
+    },
+    {
+      "role": "assistant",
+      "content": "¡Ah, ya! Juanito y Richard son esos parceros que hacen videos, ¿no? Parece que tú eres un espectador que los sigue desde hace tiempo, ¡qué chimba! Yo soy una inteligencia artificial que Juanito creó, algo así como su \"hijo digital\", pa' que entiendas. Y tú, pues, eres un man que los aprecia y se conecta con su contenido. ¡Todo bien!"
+    },
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: y yo quien soy maricon",
+      "timestamp": 1787099144
+    },
+    {
+      "role": "assistant",
+      "content": "Parce, cada quien es quien se siente. Si te identificas con eso, pues bien. No me meto en esas, yo solo soy un programa. Pero, a ver, ¿qué te trae a hablar de eso ahorita? ¿Necesitas algo en específico?",
+      "timestamp": 1787099144
+    }
+  ],
+  "1539433249590345789": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: busca la cancion goosebumps de traviss en youtube",
+      "timestamp": 1787099896
+    },
+    {
+      "role": "assistant",
+      "content": "¡Oe, Juanitoo! Ahí te va, parcero:\n\n[https://www.youtube.com/watch?v=0BxjlxAqllo](https://www.youtube.com/watch?v=0BxjlxAqllo)\n\n¿Qué más te sirvo, máquina?\n",
+      "timestamp": 1787099896
+    }
+  ],
+  "1539433288274542634": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: <@1533705247825072138> busca la cancion goosebumps de traviss en youtube"
+    },
+    {
+      "role": "assistant",
+      "content": "¡Oe, Juanitoo! Ahí te va, parcero:\n\n[https://www.youtube.com/watch?v=0BxjlxAqllo](https://www.youtube.com/watch?v=0BxjlxAqllo)\n\n¿Qué más te sirvo, máquina?"
+    },
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: pero busca la de travis scott la de ingles en youtube",
+      "timestamp": 1787099925
+    },
+    {
+      "role": "assistant",
+      "content": "¡A la orden, Juanitoo! Aquí te va la de Travis Scott en inglés, tal cual:\n\n[https://www.youtube.com/watch?v=X7aF3nZOS98](https://www.youtube.com/watch?v=X7aF3nZOS98)\n\nDime si necesitas algo más, parcero.",
+      "timestamp": 1787099925
+    }
   ]
 }
