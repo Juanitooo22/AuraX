@@ -711,20 +711,20 @@ function setupSilenceDetection(stream){
 function stopRecording(){
   if(!isRecording) return; isRecording=false;
   if(mediaRecorder&&mediaRecorder.state!=='inactive') mediaRecorder.stop();
-  updateVoiceBtn(false); setCallStatus('Procesando...');
+  updateVoiceBtn(false); setCallStatus('...');
 }
 
 async function processAudio(){
   const blob=new Blob(audioChunks,{type:'audio/webm'});
   if(blob.size<1000){ if(callActive) setTimeout(startRecording,500); return; }
   try{
-    setCallStatus('Transcribiendo...');
+    setCallStatus('AuraX escucha...');
     const sttRes=await fetch(NGROK+'/stt',{method:'POST',headers:{'Content-Type':'audio/webm','ngrok-skip-browser-warning':'1'},body:blob});
     const {texto}=await sttRes.json();
     if(!texto||texto.trim().length<2){ if(callActive) setTimeout(startRecording,300); return; }
     setCallStatus('AuraX pensando...'); document.getElementById('callWave').style.display='flex';
     const chat=chats.find(c=>c.id===activeId);
-    const chatRes=await fetch(NGROK+'/chat',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify({mensaje:texto,chat_id:activeId,user_id:currentUser?.uid,history:chat?chat.history.slice(-4):[]})});
+    const chatRes=await fetch(NGROK+'/chat',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify({mensaje:texto,chat_id:activeId,user_id:currentUser?.uid,history:chat?chat.history.slice(-4):[],voice_mode:true})});
     const {respuesta}=await chatRes.json();
     if(chat){ appendBubble('user',texto); chat.history.push({role:'user',content:texto}); appendBubble('ai',respuesta); chat.history.push({role:'assistant',content:respuesta}); saveChat(chat); }
     setCallStatus('AuraX hablando...');
