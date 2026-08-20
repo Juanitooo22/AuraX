@@ -23,7 +23,7 @@ _kokoro = _Kokoro('/workspace/AuraX/kokoro-v1.0.onnx', '/workspace/AuraX/voices-
 
 SERPER_API_KEY = os.getenv('SERPER_API_KEY')
 OLLAMA_URL = "http://localhost:11434/api/chat"
-MODEL = "gemma3:27b"
+MODEL = "gemma4:12b"
 MODEL_CODE = "hf.co/bartowski/Qwen2.5-Coder-14B-Instruct-abliterated-GGUF:Q4_K_M"
 SYSTEM_PROMPT_CODE = """Eres KromaX, experto en codigo. Responde en español. SIEMPRE que generes codigo, ponlo en un bloque [ARCHIVO:py:nombre.py:codigo_completo] al final. Nunca trunces el codigo."""
 MODEL_FREE = "dolphin3:8b"
