@@ -689,485 +689,184 @@ function setupAudioAnalyser(){
 
 function setupContinuousRecognition(){
   recognition=new SpeechRecognitionAPI();
-
-  recognition.lang='es-CO';
-  recognition.continuous=true;
-  recognition.interimResults=true;
-  recognition.maxAlternatives=1;
-
-  let turnText='';
-  let pendingFinal='';
-  let lastSentText='';
-  let lastSentAt=0;
-
-  const normalizeVoiceText=(text)=>{
-    return (text||'')
-      .replace(/\s+/g,' ')
-      .trim();
-  };
-
-  const commitOnce=(text)=>{
-    text=normalizeVoiceText(text);
-    if(!text || text.length<2) return;
-
-    const now=Date.now();
-
-    /*
-     * Evita duplicados inmediatos exactos.
-     */
-    if(
-      text.toLowerCase()===lastSentText.toLowerCase() &&
-      now-lastSentAt<1500
-    ){
-      return;
-    }
-
-    lastSentText=text;
-    lastSentAt=now;
-
-    turnText='';
-    pendingFinal='';
-
-    clearTimeout(speechCommitTimer);
-
-    userIsSpeaking=false;
-
-    commitVoiceText(text);
-  };
-
-  recognition.onstart=()=>{
-    recognitionRunning=true;
-
-    if(!voiceBusy&&!currentAudio){
-      setCallStatus('Te escucho');
-    }
-  };
-
+  recognition.lang='es-CO'; recognition.continuous=true; recognition.interimResults=true; recognition.maxAlternatives=1;
+  recognition.onstart=()=>{ recognitionRunning=true; if(!voiceBusy&&!currentAudio) setCallStatus('Te escucho'); };
   recognition.onresult=(event)=>{
-    let finalParts=[];
-    let interimParts=[];
-
+    let finalText='', interim='';
     for(let i=event.resultIndex;i<event.results.length;i++){
-      const result=event.results[i];
-      const text=normalizeVoiceText(result[0]?.transcript||'');
-
-      if(!text) continue;
-
-      if(result.isFinal){
-        finalParts.push(text);
-      }else{
-        interimParts.push(text);
-      }
+      const t=event.results[i][0].transcript.trim();
+      if(event.results[i].isFinal) finalText+=(t+' '); else interim+=(t+' ');
     }
-
-    const finalText=normalizeVoiceText(finalParts.join(' '));
-    const interimText=normalizeVoiceText(interimParts.join(' '));
-
-    /*
-     * FINAL:
-     *
-     * NO lo enviamos inmediatamente.
-     *
-     * Chrome puede entregar:
-     *
-     *   "bien"
-     *
-     * y unos instantes después:
-     *
-     *   "Bien y tú"
-     *
-     * Esperamos un pequeño margen para capturar el turno completo.
-     */
-    if(finalText){
-      userIsSpeaking=false;
-
-      pendingFinal=normalizeVoiceText(
-        [pendingFinal, finalText].filter(Boolean).join(' ')
-      );
-
-      turnText=pendingFinal;
-
-      clearTimeout(speechCommitTimer);
-
-      speechCommitTimer=setTimeout(()=>{
-        const text=normalizeVoiceText(pendingFinal);
-
-        if(text && text.length>=2){
-          /*
-           * Si AuraX estaba hablando, ahora sí hacemos barge-in:
-           * ya tenemos una frase confirmada del usuario.
-           */
-          if(currentAudio){
-            interruptAuraX();
-          }
-
-          commitOnce(text);
-        }
-      },450);
-
-      return;
-    }
-
-    /*
-     * INTERIM:
-     *
-     * Solamente actualizamos lo que Chrome está escuchando.
-     * Nunca hacemos /chat_stream directamente desde aquí.
-     */
-    if(interimText){
+    const live=(finalText||interim).trim();
+    if(interim.trim()){
       userIsSpeaking=true;
-
-      /*
-       * Mientras AuraX habla NO lo interrumpimos por un interim.
-       * Así evitamos falsos barge-in causados por el propio audio.
-       */
-
-      turnText=normalizeVoiceText(
-        [pendingFinal, interimText].filter(Boolean).join(' ')
-      );
-
-      /*
-       * Si Chrome todavía no entrega FINAL, damos bastante tiempo
-       * antes de usar el fallback.
-       */
+      // Barge-in: cortar inmediatamente cuando realmente empezamos a hablar.
+      if(currentAudio) interruptAuraX();
       clearTimeout(speechCommitTimer);
-
+      // No esperamos el onend de SpeechRecognition: 380 ms de silencio es suficiente.
       speechCommitTimer=setTimeout(()=>{
-        const text=normalizeVoiceText(turnText);
-
-        if(
-          text &&
-          text.length>=2 &&
-          text!==lastSentText
-        ){
-          /*
-           * Solo usamos este camino si Chrome realmente no entregó
-           * un FINAL después de un periodo razonable.
-           */
-          if(currentAudio){
-            interruptAuraX();
-          }
-
-          commitOnce(text);
-        }
-      },900);
+        const t=live.trim();
+        if(t && t.length>=2) commitVoiceText(t);
+      },380);
+    }
+    if(finalText.trim()){
+      clearTimeout(speechCommitTimer);
+      const t=finalText.trim();
+      if(t.length>=2) commitVoiceText(t);
     }
   };
-
   recognition.onerror=(e)=>{
     recognitionRunning=false;
-
-    if(
-      callActive &&
-      !isMuted &&
-      e.error!=='not-allowed' &&
-      e.error!=='service-not-allowed'
-    ){
-      clearTimeout(recognitionRestart);
-
-      recognitionRestart=setTimeout(()=>{
-        startListening();
-      },100);
+    if(callActive&&!isMuted&&e.error!=='not-allowed'&&e.error!=='service-not-allowed'){
+      clearTimeout(recognitionRestart); recognitionRestart=setTimeout(startListening,80);
     }
   };
-
   recognition.onend=()=>{
     recognitionRunning=false;
-
-    if(callActive&&!isMuted){
-      clearTimeout(recognitionRestart);
-
-      recognitionRestart=setTimeout(()=>{
-        startListening();
-      },80);
-    }
+    if(callActive&&!isMuted){ clearTimeout(recognitionRestart); recognitionRestart=setTimeout(startListening,80); }
   };
 }
 
 function startListening(){
   if(!callActive||isMuted||!recognition||recognitionRunning) return;
-
-  try{
-    recognition.start();
-  }catch(e){}
+  try{ recognition.start(); }catch(e){}
 }
-
 function stopListening(){
-  clearTimeout(recognitionRestart);
-  clearTimeout(speechCommitTimer);
-
-  if(recognition&&recognitionRunning){
-    try{
-      recognition.stop();
-    }catch(e){}
-  }
-
+  clearTimeout(recognitionRestart); clearTimeout(speechCommitTimer);
+  if(recognition&&recognitionRunning){ try{recognition.stop();}catch(e){} }
   recognitionRunning=false;
 }
 
 function commitVoiceText(text){
-  if(!callActive||isMuted||!text) return;
-
-  text=text
-    .replace(/\s+/g,' ')
-    .trim();
-
-  if(text.length<2) return;
-
-  /*
-   * No bloqueamos una frase solamente porque voiceBusy sea true.
-   *
-   * Si el usuario realmente comenzó un nuevo turno, handleVoiceTurn()
-   * se encargará de cancelar limpiamente la respuesta anterior.
-   */
+  if(!callActive||isMuted||!text||text.length<2) return;
+  // Evita que un mismo final/interim se mande varias veces.
+  if(voiceBusy && text===currentReplyText) return;
   userIsSpeaking=false;
-
   handleVoiceTurn(text);
 }
 
 function interruptAuraX(){
-  /*
-   * Cada interrupción invalida inmediatamente cualquier reproducción
-   * o TTS perteneciente al turno anterior.
-   */
+  // Invalidamos cualquier reproductor anterior. Esto evita que una promesa
+  // vieja de TTS vuelva a arrancar audio después de una interrupción.
   playbackGeneration++;
-
-  if(voiceAbort){
-    try{
-      voiceAbort.abort();
-    }catch(e){}
-    voiceAbort=null;
-  }
-
+  if(voiceAbort){ try{voiceAbort.abort();}catch(e){} voiceAbort=null; }
   audioQueue=[];
-
-  if(currentAudio){
-    try{
-      currentAudio.onended=null;
-      currentAudio.onerror=null;
-      currentAudio.pause();
-      currentAudio.currentTime=0;
-      currentAudio.src='';
-    }catch(e){}
-    currentAudio=null;
-  }
-
-  if(currentAudioUrl){
-    try{
-      URL.revokeObjectURL(currentAudioUrl);
-    }catch(e){}
-    currentAudioUrl=null;
-  }
-
+  if(currentAudio){ try{currentAudio.onended=null;currentAudio.onerror=null;currentAudio.pause();currentAudio.currentTime=0;currentAudio.src='';}catch(e){} currentAudio=null; }
+  if(currentAudioUrl){ URL.revokeObjectURL(currentAudioUrl); currentAudioUrl=null; }
   playingQueue=false;
-
   document.getElementById('callWave')?.style.setProperty('display','none');
-
-  if(callActive&&!isMuted){
-    setCallStatus('Te escucho');
-  }
+  if(callActive&&!isMuted) setCallStatus('Te escucho');
 }
 
 function findSentence(buffer){
+  // Empieza a hablar en cuanto hay una frase completa; no espera toda la respuesta.
   const m=buffer.match(/^([\s\S]*?[.!?…]+)(?:\s+|$)/);
-
-  return m
-    ? {
-        sentence:m[1].trim(),
-        rest:buffer.slice(m[0].length)
-      }
-    : null;
+  return m ? {sentence:m[1].trim(),rest:buffer.slice(m[0].length)} : null;
 }
 
 function queueSentence(sentence){
-  sentence=(sentence||'')
-    .replace(/\s+/g,' ')
-    .trim();
-
+  sentence=(sentence||'').replace(/\s+/g,' ').trim();
   if(!sentence) return;
-
   const gen=playbackGeneration;
-
+  // Empezamos a generar TTS AHORA, no cuando termine el audio anterior.
+  // Así el siguiente fragmento queda listo mientras AuraX está hablando.
   const promise=fetch(NGROK+'/tts_fast',{
     method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'ngrok-skip-browser-warning':'1'
-    },
+    headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},
     body:JSON.stringify({texto:sentence}),
     signal:voiceAbort?.signal
   }).then(res=>{
     if(!res.ok) throw new Error('TTS '+res.status);
     return res.blob();
   });
-
   audioQueue.push({promise,gen});
   playNextSentence();
 }
 
+async function playNextSentence(){
+  if(playingQueue||!callActive||!audioQueue.length) return;
+  const gen=playbackGeneration;
+  const item=audioQueue.shift();
+  playingQueue=true;
+  try{
+    if(!callActive || gen!==playbackGeneration) return;
+    setCallStatus('AuraX habla');
+    document.getElementById('callWave')?.style.setProperty('display','flex');
+
+    const blob=await item.promise;
+
+    if(!callActive || gen!==playbackGeneration || voiceAbort?.signal.aborted) return;
+
+    currentAudioUrl=URL.createObjectURL(blob);
+    currentAudio=new Audio(currentAudioUrl);
+    currentAudio.preload='auto';
+    currentAudio.volume=1;
+
+    await currentAudio.play();
+    await new Promise(resolve=>{
+      const a=currentAudio;
+      a.onended=resolve;
+      a.onerror=resolve;
+    });
+  }catch(e){
+    if(e.name!=='AbortError') console.warn('TTS:',e);
+  }finally{
+    if(gen===playbackGeneration){
+      if(currentAudioUrl){URL.revokeObjectURL(currentAudioUrl);currentAudioUrl=null;}
+      currentAudio=null;
+      playingQueue=false;
+      document.getElementById('callWave')?.style.setProperty('display','none');
+      if(audioQueue.length) playNextSentence();
+      else if(callActive&&!userIsSpeaking) setCallStatus('Te escucho');
+    }
+  }
+}
+
 async function handleVoiceTurn(text){
   if(!callActive||isMuted||!text||text.length<2) return;
-
-  /*
-   * Un nuevo turno SIEMPRE invalida la respuesta anterior.
-   *
-   * Esto es correcto porque aquí ya llegamos con un turno confirmado.
-   */
+  // Una nueva frase cancela cualquier respuesta anterior inmediatamente.
   interruptAuraX();
-
-  voiceBusy=true;
-  currentReplyText=text;
-
+  voiceBusy=true; currentReplyText=''; currentReplyText=text;
   setCallStatus('Te escucho');
-
   const chat=chats.find(c=>c.id===activeId);
-
   if(chat){
     chat.voiceHistory=chat.voiceHistory||[];
-
-    chat.voiceHistory.push({
-      role:'user',
-      content:text
-    });
+    chat.voiceHistory.push({role:'user',content:text});
   }
-
-  const turnAbort=new AbortController();
-  voiceAbort=turnAbort;
-
-  let buffer='';
-  let full='';
-
+  voiceAbort=new AbortController();
+  let buffer='', full='';
   try{
     const res=await fetch(NGROK+'/chat_stream',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'ngrok-skip-browser-warning':'1'
-      },
-      body:JSON.stringify({
-        mensaje:text,
-        chat_id:activeId,
-        user_id:currentUser?.uid,
-        history:chat
-          ? (chat.voiceHistory || chat.history || []).slice(-6)
-          : [],
-        voice_mode:true,
-        username:currentUser?.displayName||'Juanito'
-      }),
-      signal:turnAbort.signal
+      method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},
+      body:JSON.stringify({mensaje:text,chat_id:activeId,user_id:currentUser?.uid,history:chat ? (chat.voiceHistory || chat.history || []).slice(-6) : [],voice_mode:true,username:currentUser?.displayName||'Juanito'}),
+      signal:voiceAbort.signal
     });
-
-    if(!res.ok){
-      throw new Error('CHAT '+res.status);
-    }
-
-    const reader=res.body.getReader();
-    const decoder=new TextDecoder();
-    let pending='';
-
+    if(!res.ok) throw new Error('CHAT '+res.status);
+    const reader=res.body.getReader(), decoder=new TextDecoder(); let pending='';
     while(true){
-      const {value,done}=await reader.read();
-
-      if(done) break;
-
-      /*
-       * Si este ya no es el controlador activo, este turno quedó
-       * obsoleto y no debe producir audio.
-       */
-      if(
-        voiceAbort!==turnAbort ||
-        turnAbort.signal.aborted
-      ){
-        return;
-      }
-
+      const {value,done}=await reader.read(); if(done) break;
       pending+=decoder.decode(value,{stream:true});
-
-      const lines=pending.split('\n');
-      pending=lines.pop()||'';
-
+      const lines=pending.split('\n'); pending=lines.pop()||'';
       for(const line of lines){
         if(!line.trim()) continue;
-
         const obj=JSON.parse(line);
-
-        if(obj.error){
-          throw new Error(obj.error);
-        }
-
+        if(obj.error) throw new Error(obj.error);
         if(obj.token){
-          /*
-           * Volvemos a comprobar que el turno siga siendo válido
-           * antes de generar TTS.
-           */
-          if(
-            voiceAbort!==turnAbort ||
-            turnAbort.signal.aborted
-          ){
-            return;
-          }
-
-          full+=obj.token;
-          buffer+=obj.token;
-
-          let hit;
-
-          while((hit=findSentence(buffer))){
-            queueSentence(hit.sentence);
-            buffer=hit.rest;
-          }
+          full+=obj.token; buffer+=obj.token;
+          let hit; while((hit=findSentence(buffer))){ queueSentence(hit.sentence); buffer=hit.rest; }
         }
       }
     }
-
-    if(
-      voiceAbort!==turnAbort ||
-      turnAbort.signal.aborted
-    ){
-      return;
-    }
-
-    if(buffer.trim()){
-      queueSentence(buffer.trim());
-    }
-
-    if(!full.trim()){
-      throw new Error('Respuesta vacía');
-    }
-
+    if(buffer.trim()) queueSentence(buffer.trim());
+    if(!full.trim()) throw new Error('Respuesta vacía');
     if(chat){
       chat.voiceHistory=chat.voiceHistory||[];
-
-      chat.voiceHistory.push({
-        role:'assistant',
-        content:full.trim()
-      });
+      chat.voiceHistory.push({role:'assistant',content:full.trim()});
     }
-
   }catch(e){
-    /*
-     * Un AbortError aquí es normal cuando el usuario empieza
-     * un nuevo turno.
-     */
-    if(e.name!=='AbortError'){
-      console.error('VOICE:',e);
-      setCallStatus('Te escucho');
-    }
-
+    if(e.name!=='AbortError') { console.error('VOICE:',e); setCallStatus('Te escucho'); }
   }finally{
-    /*
-     * Solo el turno que todavía sea el activo puede liberar
-     * voiceBusy/voiceAbort.
-     */
-    if(voiceAbort===turnAbort){
-      voiceAbort=null;
-      voiceBusy=false;
-      currentReplyText='';
-
-      if(callActive&&!isMuted){
-        startListening();
-      }
-    }
+    voiceBusy=false; voiceAbort=null; currentReplyText=''; startListening();
   }
 }
 
