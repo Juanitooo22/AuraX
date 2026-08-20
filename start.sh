@@ -13,7 +13,10 @@ ollama pull dolphin3:8b 2>&1 | tail -1
 
 # SearXNG
 pkill -f searx.webapp 2>/dev/null; sleep 1
+cd /workspace/searxng
+pip install msgspec -q --break-system-packages 2>/dev/null
 SEARXNG_SETTINGS_PATH=/etc/searxng/settings.yml python -m searx.webapp > /tmp/searxng.log 2>&1 &
+cd /workspace/AuraX
 sleep 5
 
 # Flask servidor
@@ -32,4 +35,4 @@ python /workspace/AuraX/discord_bot.py > /tmp/bot.log 2>&1 &
 sleep 3
 
 echo "✅ AuraX corriendo!"
-echo "Logs: /tmp/servidor.log | /tmp/bot.log | /tmp/ollama.log"
+echo "Logs: /tmp/servidor.log | /tmp/bot.log | /tmp/ollama.log | /tmp/searxng.log"
