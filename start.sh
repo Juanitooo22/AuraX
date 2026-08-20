@@ -12,12 +12,7 @@ ollama pull qwen2.5-coder:14b 2>&1 | tail -1
 ollama pull dolphin3:8b 2>&1 | tail -1
 
 # SearXNG
-pkill -f searx.webapp 2>/dev/null; sleep 1
-cd /workspace/searxng
-pip install msgspec -q --break-system-packages 2>/dev/null
-SEARXNG_SETTINGS_PATH=/etc/searxng/settings.yml python -m searx.webapp > /tmp/searxng.log 2>&1 &
-cd /workspace/AuraX
-sleep 5
+bash /workspace/AuraX/setup_searxng.sh
 
 # Flask servidor
 pkill -f servidor.py 2>/dev/null; sleep 1
