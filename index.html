@@ -700,30 +700,32 @@ function setupContinuousRecognition(){
     const live=(finalText||interim).trim();
     if(interim.trim()){
       userIsSpeaking=true;
-      // Barge-in: cortar inmediatamente cuando realmente empezamos a hablar.
       if(currentAudio) interruptAuraX();
       clearTimeout(speechCommitTimer);
-      // No esperamos el onend de SpeechRecognition: 380 ms de silencio es suficiente.
       speechCommitTimer=setTimeout(()=>{
-        const t=live.trim();
-        if(t && t.length>=2) commitVoiceText(t);
-      },380);
+        userIsSpeaking=false;
+        commitVoiceText(live.trim());
+      },320);
     }
     if(finalText.trim()){
       clearTimeout(speechCommitTimer);
-      const t=finalText.trim();
-      if(t.length>=2) commitVoiceText(t);
+      userIsSpeaking=false;
+      commitVoiceText(finalText.trim());
     }
   };
   recognition.onerror=(e)=>{
     recognitionRunning=false;
     if(callActive&&!isMuted&&e.error!=='not-allowed'&&e.error!=='service-not-allowed'){
-      clearTimeout(recognitionRestart); recognitionRestart=setTimeout(startListening,80);
+      clearTimeout(recognitionRestart);
+      recognitionRestart=setTimeout(()=>{ startListening(); },100);
     }
   };
   recognition.onend=()=>{
     recognitionRunning=false;
-    if(callActive&&!isMuted){ clearTimeout(recognitionRestart); recognitionRestart=setTimeout(startListening,80); }
+    if(callActive&&!isMuted){
+      clearTimeout(recognitionRestart);
+      recognitionRestart=setTimeout(()=>{ startListening(); },80);
+    }
   };
 }
 
@@ -731,16 +733,19 @@ function startListening(){
   if(!callActive||isMuted||!recognition||recognitionRunning) return;
   try{ recognition.start(); }catch(e){}
 }
+
 function stopListening(){
-  clearTimeout(recognitionRestart); clearTimeout(speechCommitTimer);
-  if(recognition&&recognitionRunning){ try{recognition.stop();}catch(e){} }
+  clearTimeout(recognitionRestart);
+  clearTimeout(speechCommitTimer);
+  if(recognition&&recognitionRunning){ try{ recognition.stop(); }catch(e){} }
   recognitionRunning=false;
 }
 
 function commitVoiceText(text){
-  if(!callActive||isMuted||!text||text.length<2) return;
-  // Evita que un mismo final/interim se mande varias veces.
-  if(voiceBusy && text===currentReplyText) return;
+  if(!callActive||isMuted||!text) return;
+  text=text.replace(/\s+/g,' ').trim();
+  if(text.length<2) return;
+  if(voiceBusy&&text===currentReplyText){ return; }
   userIsSpeaking=false;
   handleVoiceTurn(text);
 }
