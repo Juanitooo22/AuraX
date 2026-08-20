@@ -829,13 +829,16 @@ async function handleVoiceTurn(text){
   voiceBusy=true; currentReplyText=''; currentReplyText=text;
   setCallStatus('Te escucho');
   const chat=chats.find(c=>c.id===activeId);
-  if(chat){ chat.history.push({role:'user',content:text}); appendBubble('user',text); }
+  if(chat){
+    chat.voiceHistory=chat.voiceHistory||[];
+    chat.voiceHistory.push({role:'user',content:text});
+  }
   voiceAbort=new AbortController();
   let buffer='', full='';
   try{
     const res=await fetch(NGROK+'/chat_stream',{
       method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},
-      body:JSON.stringify({mensaje:text,chat_id:activeId,user_id:currentUser?.uid,history:chat?chat.history.slice(-8):[],voice_mode:true,username:currentUser?.displayName||'Juanito'}),
+      body:JSON.stringify({mensaje:text,chat_id:activeId,user_id:currentUser?.uid,history:chat ? (chat.voiceHistory || chat.history || []).slice(-6) : [],voice_mode:true,username:currentUser?.displayName||'Juanito'}),
       signal:voiceAbort.signal
     });
     if(!res.ok) throw new Error('CHAT '+res.status);
@@ -856,8 +859,10 @@ async function handleVoiceTurn(text){
     }
     if(buffer.trim()) queueSentence(buffer.trim());
     if(!full.trim()) throw new Error('Respuesta vacía');
-    if(chat){ chat.history.push({role:'assistant',content:full.trim()}); saveChat(chat); }
-    appendBubble('ai',full.trim());
+    if(chat){
+      chat.voiceHistory=chat.voiceHistory||[];
+      chat.voiceHistory.push({role:'assistant',content:full.trim()});
+    }
   }catch(e){
     if(e.name!=='AbortError') { console.error('VOICE:',e); setCallStatus('Te escucho'); }
   }finally{
