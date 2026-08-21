@@ -1005,6 +1005,108 @@ function queueSentence(sentence){
   playNextSentence();
 }
 
+
+async function playNextSentence(){
+  if(playingQueue) return;
+
+  if(!audioQueue.length){
+    return;
+  }
+
+  playingQueue=true;
+
+  const item=audioQueue.shift();
+  const {promise,gen}=item;
+
+  try{
+    const blob=await promise;
+
+    if(gen!==playbackGeneration){
+      playingQueue=false;
+      playNextSentence();
+      return;
+    }
+
+    const url=URL.createObjectURL(blob);
+    currentAudioUrl=url;
+
+    const audio=new Audio(url);
+    currentAudio=audio;
+
+    if(gen!==playbackGeneration){
+      try{
+        URL.revokeObjectURL(url);
+      }catch(e){}
+
+      currentAudio=null;
+      currentAudioUrl=null;
+      playingQueue=false;
+      playNextSentence();
+      return;
+    }
+
+    audio.onended=()=>{
+      try{
+        URL.revokeObjectURL(url);
+      }catch(e){}
+
+      if(currentAudio===audio){
+        currentAudio=null;
+        currentAudioUrl=null;
+      }
+
+      playingQueue=false;
+
+      if(audioQueue.length){
+        playNextSentence();
+      }else if(callActive&&!isMuted){
+        setCallStatus('Te escucho');
+      }
+    };
+
+    audio.onerror=(e)=>{
+      console.warn('VOICE AUDIO ERROR:',e);
+
+      try{
+        URL.revokeObjectURL(url);
+      }catch(e){}
+
+      if(currentAudio===audio){
+        currentAudio=null;
+        currentAudioUrl=null;
+      }
+
+      playingQueue=false;
+
+      if(audioQueue.length){
+        playNextSentence();
+      }
+    };
+
+    if(gen!==playbackGeneration){
+      audio.pause();
+      audio.src='';
+      playingQueue=false;
+      playNextSentence();
+      return;
+    }
+
+    await audio.play();
+
+  }catch(e){
+
+    if(e?.name!=='AbortError'){
+      console.error('VOICE PLAY ERROR:',e);
+    }
+
+    playingQueue=false;
+
+    if(audioQueue.length){
+      playNextSentence();
+    }
+  }
+}
+
 async function handleVoiceTurn(text){
   if(!callActive||isMuted||!text||text.length<2) return;
 
