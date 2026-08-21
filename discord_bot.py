@@ -33,7 +33,7 @@ def save_history(data):
     except Exception as e:
         print(f'Error guardando historial: {e}')
     total = sum(len(v) for v in data.values())
-    if total % 10 == 0:
+    if total % 5 == 0:
         try:
             import subprocess
             token = os.getenv('GITHUB_TOKEN')
@@ -41,7 +41,7 @@ def save_history(data):
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.Popen(['git', '-C', '/workspace/AuraX', 'commit', '-m', 'auto backup historial'],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            subprocess.Popen(['git', '-C', '/workspace/AuraX', 'push', 'origin', 'main'],
+            subprocess.Popen(['git', '-C', '/workspace/AuraX', 'push', 'origin', 'voz-fase1'],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             print(f'Git backup: {total} mensajes')
         except Exception as e:
