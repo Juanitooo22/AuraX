@@ -1008,13 +1008,6 @@ function queueSentence(sentence){
 async function handleVoiceTurn(text){
   if(!callActive||isMuted||!text||text.length<2) return;
 
-  /*
-   * Un nuevo turno SIEMPRE invalida la respuesta anterior.
-   *
-   * Esto es correcto porque aquí ya llegamos con un turno confirmado.
-   */
-  interruptAuraX();
-
   voiceBusy=true;
   currentReplyText=text;
 
