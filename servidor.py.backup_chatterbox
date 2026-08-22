@@ -1,7 +1,4 @@
-import threading
-
-CHATTERBOX_TTS_LOCK = threading.Lock()
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests
 import os
@@ -37,7 +34,7 @@ OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL = "gemma4:12b"
 MODEL_CODE = "hf.co/bartowski/Qwen2.5-Coder-14B-Instruct-abliterated-GGUF:Q4_K_M"
 SYSTEM_PROMPT_CODE = """Eres KromaX, experto en codigo. Responde en español. SIEMPRE que generes codigo, ponlo en un bloque [ARCHIVO:py:nombre.py:codigo_completo] al final. Nunca trunces el codigo."""
-MODEL_FREE = "huihui_ai/smallthinker-abliterated:3b"
+MODEL_FREE = "dolphin3:8b"
 
 SYSTEM_PROMPT_VOZ = """Estás hablando por llamada de voz con Juanito. Habla como una persona colombiana real, de forma espontánea, cálida y natural. No parezcas un asistente virtual.
 
@@ -600,18 +597,6 @@ import asyncio
 import edge_tts
 import io
 
-# ============================================================
-# CHATTERBOX TTS
-# ============================================================
-import torch
-import torchaudio
-from chatterbox.tts import ChatterboxTTS
-
-print("🚀 Cargando Chatterbox TTS...")
-CHATTERBOX_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-CHATTERBOX_MODEL = ChatterboxTTS.from_pretrained(device=CHATTERBOX_DEVICE)
-print(f"✅ Chatterbox cargado en {CHATTERBOX_DEVICE}")
-
 def limpiar_texto_tts(texto):
     """Limpia emojis y formato que no deben pronunciarse."""
     import re
@@ -828,70 +813,39 @@ def chat_stream():
 
 @app.route('/tts_fast', methods=['POST', 'OPTIONS'])
 def tts_fast():
-    """
-    TTS principal de AuraX usando Chatterbox.
-    Devuelve WAV directamente al navegador.
-    """
     if request.method == 'OPTIONS':
         r = jsonify({})
         r.headers['Access-Control-Allow-Origin'] = '*'
         r.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
         r.headers['Access-Control-Allow-Headers'] = '*'
         return r
+    data = request.get_json(silent=True) or {}
+    texto = limpiar_texto_tts(data.get('texto') or '')
+    if not texto:
+        return jsonify({'error': 'no texto'}), 400
+
+    async def generar():
+        communicate = edge_tts.Communicate(
+            texto,
+            voice='es-CO-SalomeNeural',
+            rate='+12%',
+            volume='+0%',
+            pitch='+0Hz'
+        )
+        audio = b''
+        async for chunk in communicate.stream():
+            if chunk['type'] == 'audio':
+                audio += chunk['data']
+        return audio
 
     try:
-        data = request.get_json(silent=True) or {}
-        texto = limpiar_texto_tts(data.get('texto') or '').strip()
-
-        if not texto:
-            return jsonify({'error': 'no texto'}), 400
-
-        print(f"🎙️ CHATTERBOX: {texto}")
-
-        with torch.inference_mode():
-            # Chatterbox estándar usa max_new_tokens=1000.
-            # Para voz conversacional de AuraX usamos una versión limitada
-            # para reducir muchísimo la latencia.
-            with CHATTERBOX_TTS_LOCK:
-                wav = CHATTERBOX_MODEL.generate(
-                    texto,
-                    exaggeration=0.5,
-                    cfg_weight=0.5,
-                    temperature=0.8
-                )
-
-        # Guardamos temporalmente el WAV en memoria.
-        buffer = io.BytesIO()
-        torchaudio.save(
-            buffer,
-            wav.detach().cpu(),
-            CHATTERBOX_MODEL.sr,
-            format="wav"
-        )
-
-        audio = buffer.getvalue()
-
-        print(
-            f"✅ CHATTERBOX generado | "
-            f"{len(audio)/1024:.1f} KB | "
-            f"{CHATTERBOX_MODEL.sr} Hz | "
-            f"VRAM {torch.cuda.memory_allocated()/1024**3:.2f} GB"
-        )
-
-        return Response(
-            audio,
-            mimetype='audio/wav',
-            headers={
-                'Access-Control-Allow-Origin': '*',
-                'Cache-Control': 'no-store',
-                'Content-Disposition': 'inline; filename=aurax.wav'
-            }
-        )
-
+        audio = asyncio.run(generar())
+        from flask import Response
+        return Response(audio, mimetype='audio/mpeg', headers={
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'no-store'
+        })
     except Exception as e:
-        print(f"❌ CHATTERBOX TTS ERROR: {e}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':

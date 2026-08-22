@@ -1,6 +1,3 @@
-import threading
-
-CHATTERBOX_TTS_LOCK = threading.Lock()
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 import requests
@@ -849,16 +846,12 @@ def tts_fast():
         print(f"🎙️ CHATTERBOX: {texto}")
 
         with torch.inference_mode():
-            # Chatterbox estándar usa max_new_tokens=1000.
-            # Para voz conversacional de AuraX usamos una versión limitada
-            # para reducir muchísimo la latencia.
-            with CHATTERBOX_TTS_LOCK:
-                wav = CHATTERBOX_MODEL.generate(
-                    texto,
-                    exaggeration=0.5,
-                    cfg_weight=0.5,
-                    temperature=0.8
-                )
+            wav = CHATTERBOX_MODEL.generate(
+                texto,
+                exaggeration=0.5,
+                cfg_weight=0.5,
+                temperature=0.8
+            )
 
         # Guardamos temporalmente el WAV en memoria.
         buffer = io.BytesIO()
