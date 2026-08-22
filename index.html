@@ -855,6 +855,8 @@ function setupContinuousRecognition(){
   };
 
   recognition.onerror=(e)=>{
+    console.warn('🎤 SPEECH ERROR:', e.error);
+
     recognitionRunning=false;
 
     if(
@@ -863,11 +865,7 @@ function setupContinuousRecognition(){
       e.error!=='not-allowed' &&
       e.error!=='service-not-allowed'
     ){
-      clearTimeout(recognitionRestart);
-
-      recognitionRestart=setTimeout(()=>{
-        startListening();
-      },100);
+      scheduleRecognitionRestart();
     }
   };
 
@@ -875,21 +873,33 @@ function setupContinuousRecognition(){
     recognitionRunning=false;
 
     if(callActive&&!isMuted){
-      clearTimeout(recognitionRestart);
-
-      recognitionRestart=setTimeout(()=>{
-        startListening();
-      },80);
+      scheduleRecognitionRestart();
     }
   };
+}
+
+function scheduleRecognitionRestart(){
+  if(!callActive||isMuted||!recognition) return;
+
+  clearTimeout(recognitionRestart);
+
+  recognitionRestart=setTimeout(()=>{
+    startListening();
+  },150);
 }
 
 function startListening(){
   if(!callActive||isMuted||!recognition||recognitionRunning) return;
 
+  clearTimeout(recognitionRestart);
+
   try{
     recognition.start();
-  }catch(e){}
+    recognitionRunning=true;
+    console.log('🎤 RECOGNITION START');
+  }catch(e){
+    recognitionRunning=false;
+  }
 }
 
 function stopListening(){
@@ -969,14 +979,32 @@ function interruptAuraX(){
 }
 
 function findSentence(buffer){
+  buffer=(buffer||'').trimStart();
+
+  // Cortar normalmente en puntuación.
   const m=buffer.match(/^([\s\S]*?[.!?…]+)(?:\s+|$)/);
 
-  return m
-    ? {
-        sentence:m[1].trim(),
-        rest:buffer.slice(m[0].length)
-      }
-    : null;
+  if(m){
+    return {
+      sentence:m[1].trim(),
+      rest:buffer.slice(m[0].length)
+    };
+  }
+
+  // Si el modelo tarda en poner puntuación,
+  // empezar TTS después de 12 palabras.
+  const words=buffer.split(/\s+/);
+
+  if(words.length>=8){
+    const cut=words.slice(0,8).join(' ');
+
+    return {
+      sentence:cut,
+      rest:buffer.slice(cut.length).trimStart()
+    };
+  }
+
+  return null;
 }
 
 function queueSentence(sentence){
@@ -988,38 +1016,86 @@ function queueSentence(sentence){
 
   const gen=playbackGeneration;
 
-  const promise=fetch(NGROK+'/tts_fast',{
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'ngrok-skip-browser-warning':'1'
-    },
-    body:JSON.stringify({texto:sentence}),
-    signal:voiceAbort?.signal
-  }).then(res=>{
-    if(!res.ok) throw new Error('TTS '+res.status);
-    return res.blob();
+  // Evitar TTS duplicado del mismo texto.
+  const normalizedSentence=sentence.toLowerCase();
+
+  if(
+    audioQueue.some(x =>
+      x.gen===gen &&
+      (x.sentence||'').toLowerCase()===normalizedSentence
+    )
+  ){
+    console.log('🛑 TTS DUPLICADO BLOQUEADO:', sentence);
+    return;
+  }
+
+  if(
+    currentAudio &&
+    currentAudio.dataset &&
+    currentAudio.dataset.auraxSentence===normalizedSentence
+  ){
+    console.log('🛑 TTS YA REPRODUCIÉNDOSE:', sentence);
+    return;
+  }
+
+  audioQueue.push({
+    sentence,
+    gen
   });
 
-  audioQueue.push({promise,gen});
   playNextSentence();
 }
 
-
 async function playNextSentence(){
   if(playingQueue) return;
-
-  if(!audioQueue.length){
-    return;
-  }
+  if(!audioQueue.length) return;
 
   playingQueue=true;
 
   const item=audioQueue.shift();
-  const {promise,gen}=item;
+  const {sentence,gen}=item;
 
   try{
-    const blob=await promise;
+    if(gen!==playbackGeneration){
+      playingQueue=false;
+      playNextSentence();
+      return;
+    }
+
+    console.log(
+      '🔊 TTS INICIO:',
+      sentence,
+      '| gen:',
+      gen,
+      '| tiempo:',
+      performance.now().toFixed(0)+'ms'
+    );
+
+    const t0=performance.now();
+
+    const res=await fetch(NGROK+'/tts_fast',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'ngrok-skip-browser-warning':'1'
+      },
+      body:JSON.stringify({texto:sentence})
+    });
+
+    if(!res.ok){
+      throw new Error('TTS '+res.status);
+    }
+
+    const blob=await res.blob();
+
+    const t1=performance.now();
+
+    console.log(
+      '🔊 TTS LISTO:',
+      sentence,
+      '| generación:',
+      ((t1-t0)/1000).toFixed(2)+'s'
+    );
 
     if(gen!==playbackGeneration){
       playingQueue=false;
@@ -1031,19 +1107,8 @@ async function playNextSentence(){
     currentAudioUrl=url;
 
     const audio=new Audio(url);
+    audio.dataset.auraxSentence=sentence.toLowerCase();
     currentAudio=audio;
-
-    if(gen!==playbackGeneration){
-      try{
-        URL.revokeObjectURL(url);
-      }catch(e){}
-
-      currentAudio=null;
-      currentAudioUrl=null;
-      playingQueue=false;
-      playNextSentence();
-      return;
-    }
 
     audio.onended=()=>{
       try{
@@ -1091,7 +1156,16 @@ async function playNextSentence(){
       return;
     }
 
+    const t2=performance.now();
+
     await audio.play();
+
+    console.log(
+      '🔊 REPRODUCIENDO:',
+      sentence,
+      '| espera total:',
+      ((t2-t0)/1000).toFixed(2)+'s'
+    );
 
   }catch(e){
 
@@ -1107,8 +1181,20 @@ async function playNextSentence(){
   }
 }
 
+
 async function handleVoiceTurn(text){
-  if(!callActive||isMuted||!text||text.length<2) return;
+  console.log('🎤 HANDLE VOICE TURN:', text);
+
+  if(!callActive||isMuted||!text||text.length<2){
+    console.warn('⚠️ HANDLE CANCELADO:', {
+      callActive,
+      isMuted,
+      text
+    });
+    return;
+  }
+
+  console.log('🚀 INICIANDO CHAT_STREAM');
 
   voiceBusy=true;
   currentReplyText=text;
@@ -1259,8 +1345,13 @@ async function handleVoiceTurn(text){
       voiceBusy=false;
       currentReplyText='';
 
-      if(callActive&&!isMuted){
-        startListening();
+      /*
+       * SpeechRecognition es continuo.
+       * No lo reiniciamos aquí: onend() se encarga
+       * únicamente si Chrome realmente lo cerró.
+       */
+      if(callActive&&!isMuted&&!recognitionRunning){
+        scheduleRecognitionRestart();
       }
     }
   }
