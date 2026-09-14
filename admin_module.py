@@ -216,7 +216,10 @@ async def handle_admin_command(message, text, bot_token):
         if not message.mentions:
             await message.reply("❌ Uso: `!dar-rol @usuario rol`")
             return True
-        usuario = message.mentions[0]
+        usuario = next((m for m in message.mentions if m.id != message.guild.me.id), None)
+        if not usuario:
+            await message.reply("❌ No encontré el usuario.")
+            return True
         nombre_rol = re.sub(r'<@!?\d+>', '', cmd[len('!dar-rol'):]).strip()
         rol = encontrar_rol(guild, nombre_rol)
         if not rol:
@@ -230,7 +233,10 @@ async def handle_admin_command(message, text, bot_token):
         if not message.mentions:
             await message.reply("❌ Uso: `!quitar-rol @usuario rol`")
             return True
-        usuario = message.mentions[0]
+        usuario = next((m for m in message.mentions if m.id != message.guild.me.id), None)
+        if not usuario:
+            await message.reply("❌ No encontré el usuario.")
+            return True
         nombre_rol = re.sub(r'<@!?\d+>', '', cmd[len('!quitar-rol'):]).strip()
         rol = encontrar_rol(guild, nombre_rol)
         if not rol:
@@ -254,12 +260,16 @@ async def handle_admin_command(message, text, bot_token):
         return True
 
     if command == '!kick':
+        print(f'KICK mentions: {message.mentions}')
         if not message.mentions:
             await message.reply("❌ Uso: `!kick @usuario razón`")
             return True
-        usuario = message.mentions[0]
+        usuario = next((m for m in message.mentions if m.id != message.guild.me.id), None)
+        if not usuario:
+            await message.reply('❌ No encontré el usuario.')
+            return True
         razon = re.sub(r'<@!?\d+>', '', cmd[len('!kick'):]).strip() or "Sin razón"
-        await guild.kick(usuario, reason=razon)
+        await message.guild.kick(usuario, reason=razon)
         await message.reply(f"✅ **{usuario.display_name}** expulsado. Razón: {razon}")
         return True
 
@@ -267,7 +277,10 @@ async def handle_admin_command(message, text, bot_token):
         if not message.mentions:
             await message.reply("❌ Uso: `!ban @usuario razón`")
             return True
-        usuario = message.mentions[0]
+        usuario = next((m for m in message.mentions if m.id != message.guild.me.id), None)
+        if not usuario:
+            await message.reply("❌ No encontré el usuario.")
+            return True
         razon = re.sub(r'<@!?\d+>', '', cmd[len('!ban'):]).strip() or "Sin razón"
         await guild.ban(usuario, reason=razon)
         await message.reply(f"✅ **{usuario.display_name}** baneado. Razón: {razon}")
@@ -291,7 +304,10 @@ async def handle_admin_command(message, text, bot_token):
         if not message.mentions:
             await message.reply("❌ Uso: `!timeout @usuario minutos`")
             return True
-        usuario = message.mentions[0]
+        usuario = next((m for m in message.mentions if m.id != message.guild.me.id), None)
+        if not usuario:
+            await message.reply("❌ No encontré el usuario.")
+            return True
         resto = re.sub(r'<@!?\d+>', '', cmd[len('!timeout'):]).strip()
         try:
             minutos = int(resto.split()[0])
