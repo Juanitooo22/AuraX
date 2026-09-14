@@ -4036,5 +4036,77 @@
       "content": "Hágale, Juanito. Puedo redactar textos, programar código, traducir, resumir vainas, resolver dudas o simplemente hablar de lo que usted quiera. Usted manda, parcero. ¿Qué quiere que hagamos?",
       "timestamp": 1787201267
     }
+  ],
+  "1548935691314929675": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: hola",
+      "timestamp": 1789365470
+    },
+    {
+      "role": "assistant",
+      "content": "¡Epa, Juanito! ¿Qué más, parcero? ¿En qué estamos hoy? Dígame de una.",
+      "timestamp": 1789365470
+    }
+  ],
+  "1548936064289341521": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: elimina todos los canales de la categoría ⋕ ∣ HIGH TEST",
+      "timestamp": 1789365564
+    },
+    {
+      "role": "assistant",
+      "content": "Oiga Juanito, parcero, vea que yo no tengo acceso a sus servidores ni a las herramientas para borrar canales directamente. Eso lo tiene que hacer usted mismo o el bot que tenga configurado para eso. Pero si necesita que le ayude con cualquier otra vuelta, usted me dirá, jefe.",
+      "timestamp": 1789365564
+    }
+  ],
+  "1548937248731308154": [],
+  "1548937458295771197": [],
+  "1548937668740653087": [],
+  "1548937788672450622": [],
+  "1548938017522188301": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: quiero que busques en internet que bots son buenos para un servidor de minecraft discord",
+      "timestamp": 1789366039
+    },
+    {
+      "role": "assistant",
+      "content": "Hágale, Juanito. Si quiere armar ese server de Minecraft bien bacano, estos son los que mandan y no fallan:\n\n1. **DiscordSRV**: Este es el rey. Es el que conecta el chat del juego con el de Discord. Imprescindible si quiere que la gente vea qué pasa en el juego.\n2. **Dyno** o **Carl-bot**: Para moderar, banear a los que se porten mal, crear roles y automatizar el servidor. Son los \"músculos\" del Discord.\n3. **Economy Bots**: Si quiere que los manes tengan una economía interna, tiendas y puedan comprar cosas.\n4. **Mee6**: Muy bueno para niveles y dar roles automáticos por actividad (aunque mucho es de pago, cumple).\n\nCualquiera de esos deja la vuelta bien profesional, Juanito. ¿Le ayudo con algo más?",
+      "timestamp": 1789366039
+    }
+  ],
+  "1548938179124400129": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: <@1533705247825072138> quiero que busques en internet que bots son buenos para un servidor de minecraft discord"
+    },
+    {
+      "role": "assistant",
+      "content": "Hágale, Juanito. Si quiere armar ese server de Minecraft bien bacano, estos son los que mandan y no fallan:\n\n1. **DiscordSRV**: Este es el rey. Es el que conecta el chat del juego con el de Discord. Imprescindible si quiere que la gente vea qué pasa en el juego.\n2. **Dyno** o **Carl-bot**: Para moderar, banear a los que se porten mal, crear roles y automatizar el servidor. Son los \"músculos\" del Discord.\n3. **Economy Bots**: Si quiere que los manes tengan una economía interna, tiendas y puedan comprar cosas.\n4. **Mee6**: Muy bueno para niveles y dar roles automáticos por actividad (aunque mucho es de pago, cumple).\n\nCualquiera de esos deja la vuelta bien profesional, Juanito. ¿Le ayudo con algo más?"
+    },
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: si quiero que busques otros 10 que sean buenos para eso pls",
+      "timestamp": 1789366159
+    },
+    {
+      "role": "assistant",
+      "content": "Hágale, Juanito, aquí le tengo otros 10 que están bien firmes para que ese servidor quede una elegancia:\n\n1. **YAGP13b!**: Es un todoterreno, sirve para moderación, niveles y mucha otra vaina en un solo bot.\n2. **Ticket Tool**: Imprescindible para que los manes abran \"tickets\" y puedan pedir ayuda de forma privada sin llenar el chat general.\n3. **Tatsu**: Muy bueno para crear economía, niveles y que la gente se active con recompensas.\n4. **ProBot**: Un \"todo en uno\" que tiene funciones de moderación y niveles bien completas.\n5. **Statbot**: Para ver quiénes son los más activos y qué tanto participan los manes.\n6. **Helper**: Excelente para gestionar roles y darles permisos automáticos a la gente.\n7. **GearBot**: Muy enfocado en sistemas de economía y tiendas, algo muy común en los de Minecraft.\n8. **Jockie Music**: Para que los manes tengan música en los canales de voz sin que el bot se bloquee.\n9. **S1mple**: Para meterle juegos y dinámicas divertidas entre los usuarios.\n10. **Wick**: Este es el que protege el servidor de ataques, raids y gente que quiera armar desorden.\n\nCon esos ya tiene herramientas de sobra para que el servidor quede una chimba, Juanito. ¿Le muevo a algo más?",
+      "timestamp": 1789366159
+    }
+  ],
+  "1548939113116205059": [
+    {
+      "role": "user",
+      "content": "Juanitoo ❤️‍🔥: dime que roles hay en este servidor en orden",
+      "timestamp": 1789366298
+    },
+    {
+      "role": "assistant",
+      "content": "Oiga Juanito, no tengo la lista de los roles aquí a la mano. Tírame la lista y de una se los ordeno, parcero.",
+      "timestamp": 1789366298
+    }
   ]
 }

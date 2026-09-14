@@ -1,4 +1,7 @@
 import discord
+import sys
+sys.path.insert(0, "/workspace/AuraX")
+from admin_module import handle_admin_command
 import requests
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -145,6 +148,12 @@ async def on_message(message):
         try:
             loop = asyncio.get_event_loop()
             is_owner = str(message.author.id) == OWNER_ID
+            print(f'DEBUG: user={message.author.id} owner={OWNER_ID} is_owner={is_owner} text={text[:50]}')
+
+            if is_owner and message.guild:
+                handled = await handle_admin_command(message, text, DISCORD_TOKEN)
+                if handled:
+                    return
 
             if is_owner and text.strip().startswith('!'):
                 if text == '!estado':
@@ -236,5 +245,102 @@ async def on_message(message):
 
         except Exception as e:
             await message.reply(f'Error: {str(e)}')
+
+
+# ─── ADMIN: Gestión de canales y categorías ───────────────────────────────────
+import unicodedata as _uc
+
+def normalizar(texto):
+    texto = _uc.normalize('NFD', texto)
+    texto = ''.join(c for c in texto if _uc.category(c) != 'Mn')
+    return texto.lower().strip()
+
+def encontrar_categoria(guild, nombre):
+    n = normalizar(nombre)
+    for cat in guild.categories:
+        if n in normalizar(cat.name):
+            return cat
+    return None
+
+async def cmd_admin(message, text):
+    guild = message.guild
+    if not guild:
+        return False
+    t = normalizar(text)
+
+    m = re.search(r'elimin[ae]?r?\s+(?:todos\s+)?(?:los\s+)?canales\s+de\s+(?:la\s+)?(?:categoria|categoría)?\s*(.+)', t)
+    if m:
+        cat = encontrar_categoria(guild, m.group(1).strip())
+        if not cat:
+            await message.reply(f"No encontré la categoría **{m.group(1)}**.")
+            return True
+        eliminados = []
+        for ch in list(cat.channels):
+            try:
+                await ch.delete()
+                eliminados.append(ch.name)
+            except Exception as e:
+                print(f"Error: {e}")
+        await message.reply(f"✅ Eliminé {len(eliminados)} canales de **{cat.name}**:" + ("\n" + "\n".join(f"- {n}" for n in eliminados) if eliminados else " (no tenía canales)"))
+        return True
+
+    m = re.search(r'elimin[ae]?r?\s+(?:la\s+)?(?:categoria|categoría)\s+(.+)', t)
+    if m:
+        cat = encontrar_categoria(guild, m.group(1).strip())
+        if not cat:
+            await message.reply(f"No encontré la categoría **{m.group(1)}**.")
+            return True
+        for ch in list(cat.channels):
+            try: await ch.delete()
+            except: pass
+        await cat.delete()
+        await message.reply(f"✅ Eliminé la categoría **{cat.name}** y todos sus canales.")
+        return True
+
+    m = re.search(r'renombrar?\s+(?:la\s+)?(?:categoria|categoría)\s+(.+?)\s+(?:a|como)\s+(.+)', t)
+    if m:
+        cat = encontrar_categoria(guild, m.group(1).strip())
+        if not cat:
+            await message.reply(f"No encontré la categoría **{m.group(1)}**.")
+            return True
+        await cat.edit(name=m.group(2).strip())
+        await message.reply(f"✅ Renombré la categoría a **{m.group(2).strip()}**.")
+        return True
+
+    m = re.search(r'crear?\s+(?:una?\s+)?(?:categoria|categoría)\s+(?:llamad[ao]\s+)?(.+)', t)
+    if m:
+        cat = await guild.create_category(m.group(1).strip())
+        await message.reply(f"✅ Creé la categoría **{cat.name}**.")
+        return True
+
+    m = re.search(r'crear?\s+(?:un\s+)?canal\s+(?:llamad[ao]\s+)?(.+?)\s+en\s+(?:la\s+)?(?:(?:categoria|categoría)\s+)?(.+)', t)
+    if m:
+        cat = encontrar_categoria(guild, m.group(2).strip())
+        ch = await guild.create_text_channel(m.group(1).strip(), category=cat)
+        await message.reply(f"✅ Creé el canal **#{ch.name}**" + (f" en **{cat.name}**." if cat else "."))
+        return True
+
+    m = re.search(r'elimin[ae]?r?\s+(?:el\s+)?canal\s+(?:llamad[ao]\s+)?(.+)', t)
+    if m:
+        ch = discord.utils.find(lambda c: normalizar(m.group(1).strip()) in normalizar(c.name), guild.text_channels)
+        if not ch:
+            await message.reply(f"No encontré el canal **{m.group(1)}**.")
+            return True
+        await ch.delete()
+        await message.reply(f"✅ Eliminé el canal **#{ch.name}**.")
+        return True
+
+    m = re.search(r'renombrar?\s+(?:el\s+)?canal\s+(.+?)\s+(?:a|como)\s+(.+)', t)
+    if m:
+        ch = discord.utils.find(lambda c: normalizar(m.group(1).strip()) in normalizar(c.name), guild.text_channels)
+        if not ch:
+            await message.reply(f"No encontré el canal **{m.group(1)}**.")
+            return True
+        await ch.edit(name=m.group(2).strip())
+        await message.reply(f"✅ Renombré el canal a **#{m.group(2).strip()}**.")
+        return True
+
+    return False
+# ──────────────────────────────────────────────────────────────────────────────
 
 client.run(DISCORD_TOKEN)

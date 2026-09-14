@@ -19,18 +19,18 @@ app = Flask(__name__)
 CORS(app)
 
 # Kokoro TTS preloaded
-from kokoro_onnx import Kokoro as _Kokoro
-import soundfile as _sf
+# from kokoro_onnx import Kokoro as _Kokoro
+# import soundfile as _sf
 import io as _io
-_kokoro = _Kokoro('/workspace/AuraX/kokoro-v1.0.onnx', '/workspace/AuraX/voices-v1.0.bin')
+# _kokoro = _Kokoro('/workspace/AuraX/kokoro-v1.0.onnx', '/workspace/AuraX/voices-v1.0.bin')
 
 # Whisper STT precargado: se carga UNA sola vez al iniciar el servidor.
-from faster_whisper import WhisperModel as _WhisperModel
-_whisper = _WhisperModel(
-    "small",
-    device="cuda",
-    compute_type="float16"
-)
+# from faster_whisper import WhisperModel as _WhisperModel
+# _whisper = _WhisperModel(
+# "small",
+# device="cuda",
+# compute_type="float16"
+# )
 
 SERPER_API_KEY = os.getenv('SERPER_API_KEY')
 OLLAMA_URL = "http://localhost:11434/api/chat"
@@ -597,20 +597,20 @@ def generate_image():
 
 
 import asyncio
-import edge_tts
+# import edge_tts
 import io
 
 # ============================================================
 # CHATTERBOX TTS
 # ============================================================
-import torch
-import torchaudio
-from chatterbox.tts import ChatterboxTTS
+# import torch
+# import torchaudio
+# from chatterbox.tts import ChatterboxTTS
 
-print("🚀 Cargando Chatterbox TTS...")
-CHATTERBOX_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-CHATTERBOX_MODEL = ChatterboxTTS.from_pretrained(device=CHATTERBOX_DEVICE)
-print(f"✅ Chatterbox cargado en {CHATTERBOX_DEVICE}")
+# print("🚀 Cargando Chatterbox TTS...")
+# CHATTERBOX_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+# CHATTERBOX_MODEL = ChatterboxTTS.from_pretrained(device=CHATTERBOX_DEVICE)
+# print(f"✅ Chatterbox cargado en {CHATTERBOX_DEVICE}")
 
 def limpiar_texto_tts(texto):
     """Limpia emojis y formato que no deben pronunciarse."""
