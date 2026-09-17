@@ -214,6 +214,22 @@ async def on_message(message):
                 thread_histories[thread_id] = thread_histories[thread_id][-40:]
             save_history(thread_histories)
 
+            # Interceptar [CMD:!comando] y ejecutarlo
+            import re as _re_cmd
+            cmd_match = _re_cmd.search(r'\[CMD:(!.+?)\]', reply)
+            if cmd_match:
+                cmd_str = cmd_match.group(1).strip()
+                reply_clean = reply[:cmd_match.start()].strip()
+                try:
+                    handled = await handle_admin_command(message, cmd_str, DISCORD_TOKEN)
+                    if reply_clean:
+                        await message.reply(reply_clean)
+                    elif not handled:
+                        await message.reply("Ejecutado.")
+                except Exception as cmd_err:
+                    await message.reply(f"Error: {cmd_err}")
+                return
+
             discord_files = []
             clean_text, file_block = parse_attachment_block(reply)
             clean_text, image_prompt = parse_image_block(clean_text)

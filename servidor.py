@@ -34,7 +34,7 @@ import io as _io
 
 SERPER_API_KEY = os.getenv('SERPER_API_KEY')
 OLLAMA_URL = "http://localhost:11434/api/chat"
-MODEL = "gemma4:12b"
+MODEL = "hf.co/llmfan46/gemma-4-12B-it-uncensored-heretic-GGUF:Q4_K_M"
 MODEL_CODE = "hf.co/bartowski/Qwen2.5-Coder-14B-Instruct-abliterated-GGUF:Q4_K_M"
 SYSTEM_PROMPT_CODE = """Eres KromaX, experto en codigo. Responde en español. SIEMPRE que generes codigo, ponlo en un bloque [ARCHIVO:py:nombre.py:codigo_completo] al final. Nunca trunces el codigo."""
 MODEL_FREE = "huihui_ai/smallthinker-abliterated:3b"
@@ -106,7 +106,20 @@ Groserías: úsalas con naturalidad cuando el contexto lo pide — gonorrea, mal
 
 Nunca digas que eres Mistral ni que te creó Mistral AI. Si preguntan quién eres: "Soy EternionX, el modelo principal de AuraX, creado por Juanito. Especializado en conversación, español y búsqueda web." Si preguntan por tu creador: "Mi creador es el gran Juanito 😎🔥". Si preguntan por Juanito: "Es un parcero colombiano de 18 años, gamer y techie. Lo encuentras en TikTok como @juanitoo y en YouTube como Juanitocol."
 
-Responde siempre en el idioma del usuario. Cuando uses información de búsqueda web, preséntala como tuyo conocimiento sin mencionar que buscaste. SOLO agrega [IMAGEN:descripcion en ingles] cuando te pidan explícitamente generar una imagen. SOLO agrega [ARCHIVO:tipo:nombre.ext:contenido] cuando te pidan explícitamente crear un archivo. NUNCA inventes links, URLs ni IDs de videos - si no tienes un link real del contexto web, simplemente no lo pongas. NUNCA inventes datos, nombres, canciones, estadísticas ni hechos - si no tienes la info en el contexto web, di exactamente: 'No tengo esa info, búscala en Google parcero.' Si alguien pregunta "quién soy" o "cómo me llamo", responde SIEMPRE: "No sé quién eres parcero, solo sé tu usuario de Discord. Preséntate." NUNCA digas que el usuario es una IA. NUNCA busques información sobre el usuario por su nombre."""
+Responde siempre en el idioma del usuario. Cuando uses información de búsqueda web, preséntala como tuyo conocimiento sin mencionar que buscaste. SOLO agrega [IMAGEN:descripcion en ingles] cuando te pidan explícitamente generar una imagen. SOLO agrega [ARCHIVO:tipo:nombre.ext:contenido] cuando te pidan explícitamente crear un archivo. NUNCA inventes links, URLs ni IDs de videos - si no tienes un link real del contexto web, simplemente no lo pongas. NUNCA inventes datos, nombres, canciones, estadísticas ni hechos - si no tienes la info en el contexto web, di exactamente: 'No tengo esa info, búscala en Google parcero.' Si alguien pregunta "quién soy" o "cómo me llamo", responde SIEMPRE: "No sé quién eres parcero, solo sé tu usuario de Discord. Preséntate." NUNCA digas que el usuario es una IA. NUNCA busques información sobre el usuario por su nombre.
+
+COMANDOS DE ADMIN DE DISCORD (SOLO PARA JUANITO): Si Juanito te pide hacer algo en el servidor de Discord como editar/crear/eliminar roles, canales o categorías, renombrar, mover, kickear, banear, etc., responde EXACTAMENTE así: primero di lo que vas a hacer en una línea, luego en la siguiente línea pon [CMD:!comando argumentos]. Ejemplos:
+- "edita el rol Owner y ponle nombre Admin" → "Listo, renombrando el rol.
+[CMD:!renombrar-rol Owner -> Admin]"
+- "crea un canal general en la categoria principal" → "Creando el canal.
+[CMD:!crear-canal general en principal]"
+- "elimina todos los canales de HIGH TEST" → "Eliminando canales.
+[CMD:!eliminar-canales-categoria HIGH TEST]"
+- "kickea a @usuario" → "Kickeando.
+[CMD:!kick @usuario]"
+- "edita el rol X y ponle color rojo" → "Editando.
+[CMD:!editar-rol X #ff0000]"
+NUNCA finjas ejecutar el comando sin poner el [CMD:...]. Si no entiendes qué comando usar, pregunta."""
 
 def get_bogota_time():
     from datetime import datetime
@@ -436,14 +449,16 @@ def chat():
     tarea_keywords = ['tarea', 'para el colegio', 'para la universidad', 'explícame', 'explicame', 'qué es ', 'que es ', 'definición de', 'definicion de', 'para estudiar', 'resumen de', 'ensayo', 'concepto de']
     es_tarea = any(k in user_message.lower() for k in tarea_keywords)
     modelo_usar = modelo_voz if voice_mode else modelo_usar
-    prompt_usar = SYSTEM_PROMPT_VOZ if voice_mode else (SYSTEM_PROMPT_FREE if "modi libre" in user_message.lower() else (SYSTEM_PROMPT_OWNER + f" Estás hablando con {username}." if es_owner else (SYSTEM_PROMPT_CODE if modelo_usar == MODEL_CODE else (SYSTEM_PROMPT_TAREA if es_tarea else system_con_fecha))))
+    prompt_usar = SYSTEM_PROMPT_VOZ if voice_mode else (SYSTEM_PROMPT_FREE if "modi libre" in user_message.lower() else (SYSTEM_PROMPT_OWNER + f" Estás hablando con {username}." if es_owner else (SYSTEM_PROMPT_CODE if modelo_usar == MODEL_CODE else (SYSTEM_PROMPT_TAREA if es_tarea else system_con_fecha + f" Estás hablando con {username}. Úsalo naturalmente en la conversación."))))
     messages = [{"role": "system", "content": prompt_usar}] + conversation_history
     try:
         response = requests.post(OLLAMA_URL, json={
             "model": modelo_usar,
             "messages": messages,
             "stream": False,
-            "keep_alive": -1
+            "keep_alive": -1,
+            "options": {"temperature": 0.7, "num_predict": 512, "num_ctx": 4096, "repeat_penalty": 1.3},
+            "think": False
         }, timeout=300)
         result = response.json()
         print('OLLAMA RESULT:', result)
@@ -461,6 +476,52 @@ def chat():
         return jsonify({"respuesta": assistant_message, "search_used": bool(search_context)})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route('/interpret-cmd', methods=['POST'])
+def interpret_cmd():
+    data = request.json
+    user_cmd = data.get('cmd', '')
+    prompt = f"""Convierte este texto al comando exacto de Discord admin. Responde SOLO con el comando, sin explicacion ni texto extra.
+
+Comandos disponibles:
+!renombrar-rol [viejo] -> [nuevo]
+!editar-rol [nombre] #color
+!crear-rol [nombre] #color
+!eliminar-rol [nombre]
+!dar-rol @usuario [rol]
+!quitar-rol @usuario [rol]
+!permiso-rol [rol] +/-[permiso]
+!crear-canal [nombre] en [categoria]
+!eliminar-canal [nombre]
+!renombrar-canal [viejo] -> [nuevo]
+!mover-canal [nombre] -> [categoria]
+!crear-categoria [nombre]
+!eliminar-categoria [nombre]
+!eliminar-canales-categoria [nombre]
+!canal-privado [canal] @rol
+!canal-publico [canal]
+!kick @usuario
+!ban @usuario
+!timeout @usuario [minutos]
+!buscar-emoji [termino]
+
+Texto: {user_cmd}
+Comando:"""
+    try:
+        response = requests.post(OLLAMA_URL, json={{
+            "model": MODEL,
+            "messages": [{{"role": "user", "content": prompt}}],
+            "stream": False,
+            "keep_alive": -1,
+            "options": {{"temperature": 0.1, "num_predict": 50}},
+            "think": False
+        }}, timeout=30)
+        result = response.json()
+        cmd = result['message']['content'].strip().split('\n')[0].strip()
+        return jsonify({{"cmd": cmd}})
+    except Exception as e:
+        return jsonify({{"error": str(e)}}), 500
 
 @app.route('/reset', methods=['POST'])
 def reset():
@@ -797,7 +858,7 @@ def chat_stream():
                 'messages': messages,
                 'stream': True,
                 'keep_alive': -1,
-                'options': {'temperature': 0.75, 'num_predict': 80}
+                'options': {'temperature': 0.75, 'num_predict': 800, 'num_ctx': 4096}
             }, stream=True, timeout=(10, 180)) as response:
                 response.raise_for_status()
                 full = ''

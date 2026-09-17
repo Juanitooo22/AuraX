@@ -501,6 +501,168 @@ async def handle_admin_command(message, text, bot_token):
             await message.reply(f"No encontré resultados. Busca en: https://emoji.gg/?q={query.replace(' ', '+')}&animated=true")
         return True
 
+
+    # EDITAR ROL (color, nombre)
+    if command == '!editar-rol':
+        # !editar-rol nombre #color
+        resto = cmd[len('!editar-rol'):].strip()
+        color_match = re.search(r'#([0-9a-fA-F]{6})', resto)
+        nombre_match = re.match(r'(.+?)(?:\s+#[0-9a-fA-F]{6})?$', resto)
+        rol = encontrar_rol(guild, nombre_match.group(1).strip() if nombre_match else resto)
+        if not rol:
+            await message.reply(f"❌ No encontré el rol **{resto}**.")
+            return True
+        kwargs = {}
+        if color_match:
+            kwargs['color'] = discord.Color(int(color_match.group(1), 16))
+        if kwargs:
+            await rol.edit(**kwargs)
+            await message.reply(f"✅ Rol **{rol.name}** editado.")
+        else:
+            await message.reply("❌ Especifica qué editar: `!editar-rol nombre #color`")
+        return True
+
+    # PERMISOS DE ROL
+    if command == '!permiso-rol':
+        # !permiso-rol nombre-rol +permiso o -permiso
+        resto = cmd[len('!permiso-rol'):].strip()
+        m = re.match(r'(.+?)\s+([+-])(\S+)', resto)
+        if not m:
+            await message.reply("❌ Uso: `!permiso-rol nombre-rol +permiso` o `-permiso`")
+            return True
+        nombre_rol, accion, permiso = m.group(1).strip(), m.group(2), m.group(3).strip()
+        rol = encontrar_rol(guild, nombre_rol)
+        if not rol:
+            await message.reply(f"❌ No encontré el rol **{nombre_rol}**.")
+            return True
+        PERMISOS_MAP = {
+            'ver_canales': 'view_channel', 'gestionar_canales': 'manage_channels',
+            'gestionar_roles': 'manage_roles', 'crear_expresiones': 'create_expressions',
+            'gestionar_expresiones': 'manage_expressions', 'ver_auditoria': 'view_audit_log',
+            'gestionar_webhooks': 'manage_webhooks', 'gestionar_servidor': 'manage_guild',
+            'crear_invitacion': 'create_instant_invite', 'cambiar_apodo': 'change_nickname',
+            'gestionar_apodos': 'manage_nicknames', 'expulsar': 'kick_members',
+            'banear': 'ban_members', 'aislar': 'moderate_members',
+            'enviar_mensajes': 'send_messages', 'enviar_en_hilos': 'send_messages_in_threads',
+            'crear_hilos': 'create_public_threads', 'embeber_links': 'embed_links',
+            'adjuntar_archivos': 'attach_files', 'añadir_reacciones': 'add_reactions',
+            'emojis_externos': 'use_external_emojis', 'stickers_externos': 'use_external_stickers',
+            'mencionar_everyone': 'mention_everyone', 'gestionar_mensajes': 'manage_messages',
+            'ver_historial': 'read_message_history', 'conectar': 'connect',
+            'hablar': 'speak', 'silenciar': 'mute_members', 'ensordecer': 'deafen_members',
+            'mover_miembros': 'move_members', 'administrador': 'administrator',
+            # aliases cortos
+            'admin': 'administrator', 'kick': 'kick_members', 'ban': 'ban_members',
+        }
+        perm_key = PERMISOS_MAP.get(normalizar(permiso).replace(' ', '_'), normalizar(permiso).replace(' ', '_'))
+        perms = rol.permissions
+        try:
+            current = discord.Permissions(**{perm_key: accion == '+'})
+            new_perms = discord.Permissions(rol.permissions.value)
+            setattr(new_perms, perm_key, accion == '+')
+            await rol.edit(permissions=new_perms)
+            estado = "activado ✅" if accion == '+' else "desactivado ❌"
+            await message.reply(f"Permiso **{permiso}** {estado} para el rol **{rol.name}**.")
+        except AttributeError:
+            await message.reply(f"❌ Permiso **{permiso}** no reconocido.")
+        except Exception as e:
+            await message.reply(f"❌ Error: {e}")
+        return True
+
+    # PERMISOS DE CANAL POR ROL
+    if command == '!permiso-canal':
+        # !permiso-canal nombre-canal @rol +permiso
+        resto = cmd[len('!permiso-canal'):].strip()
+        m = re.match(r'(.+?)\s+<@&?(\d+)>\s+([+-])(\S+)', resto)
+        if not m:
+            await message.reply("❌ Uso: `!permiso-canal nombre-canal @rol +permiso`")
+            return True
+        nombre_canal, rol_id, accion, permiso = m.group(1).strip(), int(m.group(2)), m.group(3), m.group(4).strip()
+        ch = encontrar_canal(guild, nombre_canal)
+        rol = guild.get_role(rol_id)
+        if not ch or not rol:
+            await message.reply(f"❌ No encontré canal o rol.")
+            return True
+        overwrite = ch.overwrites_for(rol)
+        PERMISOS_MAP = {
+            'ver_canal': 'view_channel', 'enviar_mensajes': 'send_messages',
+            'leer_historial': 'read_message_history', 'adjuntar': 'attach_files',
+            'embeber': 'embed_links', 'mencionar_everyone': 'mention_everyone',
+            'gestionar_mensajes': 'manage_messages', 'añadir_reacciones': 'add_reactions',
+            'conectar': 'connect', 'hablar': 'speak',
+        }
+        perm_key = PERMISOS_MAP.get(normalizar(permiso).replace(' ', '_'), normalizar(permiso).replace(' ', '_'))
+        try:
+            setattr(overwrite, perm_key, accion == '+')
+            await ch.set_permissions(rol, overwrite=overwrite)
+            estado = "activado ✅" if accion == '+' else "desactivado ❌"
+            await message.reply(f"Permiso **{permiso}** {estado} para **{rol.name}** en **#{ch.name}**.")
+        except Exception as e:
+            await message.reply(f"❌ Error: {e}")
+        return True
+
+    # CANAL PRIVADO (solo un rol puede verlo)
+    if command == '!canal-privado':
+        # !canal-privado nombre-canal @rol
+        resto = cmd[len('!canal-privado'):].strip()
+        m = re.match(r'(.+?)\s+<@&?(\d+)>', resto)
+        if not m:
+            await message.reply("❌ Uso: `!canal-privado nombre-canal @rol`")
+            return True
+        ch = encontrar_canal(guild, m.group(1).strip())
+        rol = guild.get_role(int(m.group(2)))
+        if not ch or not rol:
+            await message.reply("❌ No encontré canal o rol.")
+            return True
+        await ch.set_permissions(guild.default_role, view_channel=False)
+        await ch.set_permissions(rol, view_channel=True)
+        await message.reply(f"✅ Canal **#{ch.name}** ahora es privado — solo visible para **{rol.name}**.")
+        return True
+
+    # CANAL PÚBLICO
+    if command == '!canal-publico':
+        nombre = cmd[len('!canal-publico'):].strip()
+        ch = encontrar_canal(guild, nombre)
+        if not ch:
+            await message.reply(f"❌ No encontré el canal **{nombre}**.")
+            return True
+        await ch.set_permissions(guild.default_role, view_channel=True)
+        await message.reply(f"✅ Canal **#{ch.name}** ahora es público.")
+        return True
+
+
+    # ROLES VACÍOS (listar)
+    if command == '!roles-vacios':
+        roles_vacios = [r for r in guild.roles if len(r.members) == 0 and r.name != '@everyone' and not r.managed]
+        if not roles_vacios:
+            await message.reply("No hay roles vacíos.")
+            return True
+        lines = [f"**🗑️ Roles sin miembros ({len(roles_vacios)}):**\n"]
+        for r in roles_vacios:
+            lines.append(f"- {r.name}")
+        await message.reply("\n".join(lines)[:2000])
+        return True
+
+    # LIMPIAR ROLES VACÍOS
+    if command in ("!limpiar-roles", "!eliminar-roles-vacios"):
+        roles_vacios = [r for r in guild.roles if len(r.members) == 0 and r.name != "@everyone" and not r.managed]
+        if not roles_vacios:
+            await message.reply("✅ No hay roles vacíos.")
+            return True
+        eliminados = []
+        errores = []
+        for r in roles_vacios:
+            try:
+                await r.delete()
+                eliminados.append(r.name)
+            except Exception as e:
+                errores.append(r.name)
+        resp = f"✅ Eliminé {len(eliminados)} roles vacíos:\n" + "\n".join(f"- {n}" for n in eliminados)
+        if errores:
+            resp += f"\n\n❌ No pude eliminar:\n" + "\n".join(errores)
+        await message.reply(resp[:2000])
+        return True
+
     # AYUDA
     if command in ('!ayuda', '!help'):
         await message.reply("""**🤖 Comandos AuraX:**
@@ -513,5 +675,52 @@ async def handle_admin_command(message, text, bot_token):
 **🎉 Onboarding:** `!onboarding-ver` `!onboarding-activar` `!onboarding-desactivar` `!onboarding-pregunta` `!onboarding-canal` `!onboarding-limpiar`
 **😀 Emojis:** `!buscar-emoji termino`""")
         return True
+
+    # Si el comando empieza con ! pero no hizo match, usar IA para interpretarlo
+    if cmd.startswith('!'):
+        import requests as _req
+        prompt = f"""Eres un intérprete de comandos de Discord. El usuario escribió: "{cmd}"
+Convierte eso al comando exacto correcto de esta lista:
+!canales, !crear-canal, !eliminar-canal, !renombrar-canal [viejo] -> [nuevo], !mover-canal [canal] -> [categoria]
+!crear-categoria, !eliminar-categoria, !renombrar-categoria [viejo] -> [nuevo], !eliminar-canales-categoria
+!roles, !crear-rol, !eliminar-rol, !renombrar-rol [viejo] -> [nuevo], !editar-rol [nombre] #color
+!dar-rol @usuario rol, !quitar-rol @usuario rol
+!permiso-rol [rol] +/-[permiso], !canal-privado [canal] @rol, !canal-publico [canal]
+!miembros, !kick @usuario, !ban @usuario, !timeout @usuario minutos
+!info, !invitaciones, !crear-invitacion, !emojis, !auditoria
+!onboarding-ver, !onboarding-activar, !onboarding-desactivar, !onboarding-pregunta, !onboarding-canal, !onboarding-limpiar
+!buscar-emoji [termino]
+
+Responde SOLO con el comando exacto, nada más. Sin explicación."""
+        try:
+            res = _req.post('http://localhost:5000/chat', json={
+                'mensaje': prompt,
+                'es_owner': True,
+                'user_id': '0',
+                'username': 'system',
+                'chat_id': 'cmd_interpreter',
+                'history': []
+            }, timeout=30)
+            interpreted = res.json().get('respuesta', '').strip().split('\n')[0].strip()
+            if interpreted.startswith('!'):
+                return await handle_admin_command(message, interpreted, bot_token)
+        except Exception as e:
+            print(f"Error interpretando comando: {e}")
+        return False
+
+
+    # Si el comando empieza con ! pero no hizo match, usar IA para interpretarlo
+    if cmd.startswith('!'):
+        import requests as _req
+        try:
+            res = _req.post('http://localhost:5000/interpret-cmd', json={'cmd': cmd}, timeout=30)
+            interpreted = res.json().get('cmd', '').strip()
+            print(f"INTERPRET: {cmd} -> {interpreted}")
+            if interpreted.startswith('!') and interpreted != cmd:
+                return await handle_admin_command(message, interpreted, bot_token)
+        except Exception as e:
+            print(f"Error interpretando: {e}")
+        return False
+
 
     return False
