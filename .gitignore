@@ -3,3 +3,5 @@
 *.bin
 *.zip
 .env
+rclone.conf
+.env
