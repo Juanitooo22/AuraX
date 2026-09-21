@@ -16,9 +16,16 @@ if ! command -v rclone &> /dev/null; then
     curl https://rclone.org/install.sh | bash
 fi
 
-# Restaurar config de rclone
+# Restaurar config de rclone automáticamente
 mkdir -p ~/.config/rclone
-cp /workspace/AuraX/rclone.conf ~/.config/rclone/rclone.conf
+RCLONE_TOKEN=$(grep RCLONE_REFRESH_TOKEN /workspace/AuraX/.env | cut -d= -f2)
+cat > ~/.config/rclone/rclone.conf << RCLONEEOF
+[gdrive]
+type = drive
+scope = drive
+token = {"access_token":"","token_type":"Bearer","refresh_token":"${RCLONE_TOKEN}","expiry":"2020-01-01T00:00:00Z"}
+team_drive = 
+RCLONEEOF
 
 # Modelo desde Drive
 ollama serve &> /tmp/ollama.log &
