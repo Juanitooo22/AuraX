@@ -450,6 +450,27 @@ def chat():
     es_tarea = any(k in user_message.lower() for k in tarea_keywords)
     modelo_usar = modelo_voz if voice_mode else modelo_usar
     prompt_usar = SYSTEM_PROMPT_VOZ if voice_mode else (SYSTEM_PROMPT_FREE if "modi libre" in user_message.lower() else (SYSTEM_PROMPT_OWNER + f" Estás hablando con {username}." if es_owner else (SYSTEM_PROMPT_CODE if modelo_usar == MODEL_CODE else (SYSTEM_PROMPT_TAREA if es_tarea else system_con_fecha + f" Estás hablando con {username}. Úsalo naturalmente en la conversación."))))
+
+    # [FECHA_REAL_AURAX]
+    prompt_usar += f"""
+[Contexto temporal obligatorio]
+La fecha y hora REAL actual en Colombia es: {fecha_actual}.
+Toma SIEMPRE esta fecha como única referencia para:
+- hoy
+- mañana
+- ayer
+- día de la semana
+- día del mes
+- mes
+- año
+- hora actual
+
+Nunca uses una fecha aprendida durante el entrenamiento del modelo
+como si fuera la fecha actual.
+Si el usuario pregunta la fecha, responde usando exclusivamente
+la fecha indicada arriba.
+"""
+
     messages = [{"role": "system", "content": prompt_usar}] + conversation_history
     try:
         response = requests.post(OLLAMA_URL, json={
