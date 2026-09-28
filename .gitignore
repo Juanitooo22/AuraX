@@ -5,3 +5,7 @@
 .env
 rclone.conf
 .env
+secrets.env
+__pycache__/
+*.pyc
+*.clixml
