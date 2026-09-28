@@ -34,7 +34,7 @@ import io as _io
 
 SERPER_API_KEY = os.getenv('SERPER_API_KEY')
 OLLAMA_URL = "http://localhost:11434/api/chat"
-MODEL = "hf.co/llmfan46/gemma-4-12B-it-uncensored-heretic-GGUF:Q4_K_M"
+MODEL = "gemma4-uncensored"
 MODEL_CODE = "hf.co/bartowski/Qwen2.5-Coder-14B-Instruct-abliterated-GGUF:Q4_K_M"
 SYSTEM_PROMPT_CODE = """Eres KromaX, experto en codigo. Responde en español. SIEMPRE que generes codigo, ponlo en un bloque [ARCHIVO:py:nombre.py:codigo_completo] al final. Nunca trunces el codigo."""
 MODEL_FREE = "huihui_ai/smallthinker-abliterated:3b"
@@ -375,7 +375,7 @@ def chat():
             media_links = f"\n\n[INSTRUCCION OBLIGATORIA]: El link real de {platform} es: {link} — COPIA ESTE LINK EXACTAMENTE en tu respuesta, sin modificarlo ni inventar otros."
 
     voice_mode = data.get('voice_mode', False)
-    modelo_voz = 'dolphin3:8b'
+    modelo_voz = 'gemma4-uncensored'
     if not voice_mode and (needs_search(user_message) or "modi libre" in user_message.lower()):
         _hora_keywords = ['hora', 'horas', 'que hora', 'qué hora', 'tiempo actual', 'que dia', 'qué dia', 'que fecha', 'qué fecha', 'que año', 'qué año']
         if any(k in user_message.lower() for k in _hora_keywords):
