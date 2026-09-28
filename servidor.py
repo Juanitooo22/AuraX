@@ -35,9 +35,9 @@ import io as _io
 SERPER_API_KEY = os.getenv('SERPER_API_KEY')
 OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL = "gemma4-uncensored"
-MODEL_CODE = "hf.co/bartowski/Qwen2.5-Coder-14B-Instruct-abliterated-GGUF:Q4_K_M"
+MODEL_CODE = "luau-coder"
 SYSTEM_PROMPT_CODE = """Eres KromaX, experto en codigo. Responde en español. SIEMPRE que generes codigo, ponlo en un bloque [ARCHIVO:py:nombre.py:codigo_completo] al final. Nunca trunces el codigo."""
-MODEL_FREE = "huihui_ai/smallthinker-abliterated:3b"
+MODEL_FREE = "gemma4-uncensored"
 
 SYSTEM_PROMPT_VOZ = """Estás hablando por llamada de voz con Juanito. Habla como una persona colombiana real, de forma espontánea, cálida y natural. No parezcas un asistente virtual.
 
