@@ -1,12 +1,12 @@
-param([int]$InstanceId = 0)
+﻿param([int]$InstanceId = 0)
 
 $ErrorActionPreference = "Stop"
 
-$Base = Join-Path $env:USERPROFILE "Desktop\AuraX-Local"
+$Base       = Join-Path $env:USERPROFILE "Desktop\AuraX-Local"
 $SecretFile = Join-Path $Base "secrets.clixml"
-$SshKey = Join-Path $env:USERPROFILE ".ssh\id_ed25519"
-$McpDir = Join-Path $env:USERPROFILE "Desktop\MCPBridge"
-$McpServer = Join-Path $McpDir "mcp-server\index.js"
+$SshKey     = Join-Path $env:USERPROFILE ".ssh\id_ed25519"
+$McpDir     = Join-Path $env:USERPROFILE "Desktop\MCPBridge"
+$McpServer  = Join-Path $McpDir "mcp-server\index.js"
 
 New-Item -ItemType Directory -Force -Path $Base | Out-Null
 
@@ -21,17 +21,16 @@ function SecureToPlain([SecureString]$Secure) {
 }
 
 if (!(Test-Path $SecretFile)) {
-    Write-Host "Primera vez: guarda el token de Discord localmente."
+    Write-Host "Primera configuracion de Discord."
     $DiscordToken = Read-Host "Discord token" -AsSecureString
 
     [pscustomobject]@{
-        DiscordToken = $DiscordToken
+        DiscordToken   = $DiscordToken
         DiscordOwnerId = "1086360701632794666"
     } | Export-Clixml $SecretFile
 }
 
-$Secrets = Import-Clixml $SecretFile
-$Token = SecureToPlain $Secrets.DiscordToken
+Write-Host "[AuraX] Buscando Vast activa..."
 
 $Instances = @(
     vastai show instances --raw |
@@ -55,87 +54,156 @@ else {
 }
 
 if (!$Inst) {
-    throw "No hay instancia Vast.ai activa."
+    throw "No encontre ninguna instancia Vast.ai activa."
 }
 
 $IP = $Inst.public_ipaddr
+if (!$IP) { $IP = $Inst.public_ip }
 
 if (!$IP) {
-    $IP = $Inst.public_ip
+    throw "No pude obtener la IP publica."
 }
 
-$Port = [int]$Inst.ports.'22/tcp'[0].HostPort
+$PortInfo = $Inst.ports.'22/tcp'
 
-Write-Host "Vast: $($Inst.id)"
-Write-Host "SSH: root@$IP`:$Port"
+if (!$PortInfo) {
+    throw "No pude obtener el puerto SSH directo."
+}
+
+$Port = [int]$PortInfo[0].HostPort
+
+Write-Host "[AuraX] Instancia: $($Inst.id)"
+Write-Host "[AuraX] SSH: root@$IP`:$Port"
+
+$Secrets = Import-Clixml $SecretFile
+$Token = SecureToPlain $Secrets.DiscordToken
 
 $TmpSecrets = Join-Path $env:TEMP "aurax-secrets.env"
 
-$EscapedToken = $Token.Replace("'", "'\''")
+try {
 
-$Content = @"
+    $EscapedToken = $Token.Replace("'", "'\''")
+
+    $Content = @"
 export DISCORD_TOKEN='$EscapedToken'
 export DISCORD_OWNER_ID='1086360701632794666'
 "@
 
-[IO.File]::WriteAllText(
-    $TmpSecrets,
-    $Content,
-    (New-Object Text.UTF8Encoding($false))
-)
+    [IO.File]::WriteAllText(
+        $TmpSecrets,
+        $Content,
+        (New-Object Text.UTF8Encoding($false))
+    )
 
-try {
+    Write-Host "[AuraX] Sincronizando servidor..."
 
     ssh `
-      -i $SshKey `
-      -p $Port `
-      -o StrictHostKeyChecking=accept-new `
-      "root@$IP" `
-      "mkdir -p /workspace; if [ ! -d /workspace/AuraX/.git ]; then git clone -b discord-only https://github.com/Juanitooo22/AuraX.git /workspace/AuraX; else git -C /workspace/AuraX fetch origin discord-only; git -C /workspace/AuraX checkout discord-only; git -C /workspace/AuraX pull --ff-only origin discord-only; fi"
+        -i $SshKey `
+        -p $Port `
+        -o StrictHostKeyChecking=accept-new `
+        "root@$IP" `
+        "mkdir -p /workspace; if [ ! -d /workspace/AuraX/.git ]; then git clone -b discord-only https://github.com/Juanitooo22/AuraX.git /workspace/AuraX; else git -C /workspace/AuraX fetch origin discord-only || true; git -C /workspace/AuraX checkout discord-only || true; git -C /workspace/AuraX pull --ff-only origin discord-only || true; fi"
 
     scp `
-      -i $SshKey `
-      -P $Port `
-      $TmpSecrets `
-      "root@$IP`:/workspace/secrets.env"
+        -i $SshKey `
+        -P $Port `
+        $TmpSecrets `
+        "root@$IP`:/workspace/secrets.env"
+
+    Write-Host "[AuraX] Arrancando servicios..."
 
     ssh `
-      -i $SshKey `
-      -p $Port `
-      "root@$IP" `
-      "chmod 600 /workspace/secrets.env; chmod +x /workspace/AuraX/setup_full.sh; bash /workspace/AuraX/setup_full.sh"
+        -i $SshKey `
+        -p $Port `
+        "root@$IP" `
+        "chmod 600 /workspace/secrets.env; if [ -x /workspace/AuraX/start_all.sh ] && ollama list 2>/dev/null | grep -q luau-coder; then /workspace/AuraX/start_all.sh; else chmod +x /workspace/AuraX/setup_full.sh; bash /workspace/AuraX/setup_full.sh; fi"
 
-    Start-Process powershell -ArgumentList @(
-        "-NoExit",
-        "-Command",
-        "ssh -N -i `"$SshKey`" -L 11435:127.0.0.1:11434 -p $Port root@$IP"
-    )
+    Write-Host "[AuraX] Abriendo tunel Ollama..."
+
+    # Mata tuneles anteriores que estén ocupando 11435
+    Get-NetTCPConnection -LocalPort 11435 -ErrorAction SilentlyContinue |
+        ForEach-Object {
+            Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue
+        }
+
+    $TunnelArgs = "-N -i `"$SshKey`" -L 11435:127.0.0.1:11434 -p $Port -o StrictHostKeyChecking=accept-new -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o IdentitiesOnly=yes root@$IP"
+
+    $Tunnel = Start-Process `
+        -FilePath "ssh.exe" `
+        -ArgumentList $TunnelArgs `
+        -WindowStyle Minimized `
+        -PassThru
+
+    $TunnelOK = $false
+
+    for ($i = 0; $i -lt 20; $i++) {
+
+        Start-Sleep -Seconds 1
+
+        try {
+            $tcp = New-Object System.Net.Sockets.TcpClient
+            $tcp.Connect("127.0.0.1", 11435)
+            $tcp.Close()
+
+            $TunnelOK = $true
+            break
+        }
+        catch {}
+    }
+
+    if (!$TunnelOK) {
+
+        if ($Tunnel.HasExited) {
+            throw "El tunel SSH fallo. Codigo: $($Tunnel.ExitCode)"
+        }
+
+        throw "No se pudo abrir localhost:11435."
+    }
+
+    Write-Host "[AuraX] Tunel Ollama: OK"
+
+    $Models = Invoke-RestMethod `
+        -Uri "http://127.0.0.1:11435/api/tags" `
+        -TimeoutSec 10
+
+    Write-Host "[AuraX] Ollama responde correctamente."
 
     if (Test-Path $McpServer) {
 
-        Start-Process powershell `
-          -WorkingDirectory (Split-Path $McpServer) `
-          -ArgumentList @(
-            "-NoExit",
-            "-Command",
-            "node index.js"
-          )
+        Write-Host "[AuraX] Arrancando MCPBridge..."
+
+        Start-Process `
+            -FilePath "powershell.exe" `
+            -WorkingDirectory (Split-Path $McpServer) `
+            -ArgumentList @(
+                "-NoExit",
+                "-Command",
+                "node index.js"
+            )
     }
 
+    Write-Host "[AuraX] Abriendo VS Code..."
     Start-Process code
 
     Write-Host ""
-    Write-Host "============================="
-    Write-Host " AURAX WINDOWS LISTO"
-    Write-Host "============================="
-    Write-Host "Ollama: http://localhost:11435"
-    Write-Host "MCPBridge Roblox: 127.0.0.1:7842"
+    Write-Host "=============================="
+    Write-Host "       AURAX CONECTADO"
+    Write-Host "=============================="
+    Write-Host "Ollama:    http://localhost:11435"
+    Write-Host "MCP Roblox: http://127.0.0.1:7842"
+    Write-Host "Vast:      $IP`:$Port"
+    Write-Host "=============================="
 }
 finally {
 
     $Token = $null
 
-    if (Test-Path $TmpSecrets) {
-        Remove-Item $TmpSecrets -Force
+    try {
+        [System.IO.File]::Delete([string]$TmpSecrets)
+    }
+    catch {
+        # No bloquear AuraX por un fallo de limpieza temporal
     }
 }
+
+
