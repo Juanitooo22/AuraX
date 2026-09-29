@@ -99,6 +99,11 @@ export DISCORD_OWNER_ID='1086360701632794666'
         $Content += "`nexport NGROK_AUTHTOKEN='$EscapedNgrokToken'`n"
     }
 
+    if ($NgrokToken) {
+        $EscapedNgrokToken = $NgrokToken.Replace("'", "'\''")
+        $Content += "`nexport NGROK_AUTHTOKEN='$EscapedNgrokToken'`n"
+    }
+
     [IO.File]::WriteAllText(
         $TmpSecrets,
         $Content,
@@ -191,7 +196,7 @@ Write-Host "[AuraX] Abriendo VS Code..."
 }
 finally {
 
-    $Token = $null`n    $NgrokToken = $null
+    $Token = $null`n    $NgrokToken = $null`n    $NgrokToken = $null
 
     try {
         [System.IO.File]::Delete([string]$TmpSecrets)
