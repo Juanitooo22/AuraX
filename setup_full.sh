@@ -42,6 +42,17 @@ python3 -m pip install \
     firebase-admin
 
 # --------------------------------------------------
+# NGROK
+# --------------------------------------------------
+
+if ! command -v ngrok >/dev/null 2>&1; then
+    echo "[AuraX] Instalando ngrok..."
+    cd /tmp
+    curl -fsSL https://bin.ngrok.com/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz | tar -xz
+    install -m 755 ngrok /usr/local/bin/ngrok
+fi
+
+# --------------------------------------------------
 # 2. Ollama
 # --------------------------------------------------
 
@@ -278,6 +289,10 @@ if [ -f /workspace/secrets.env ]; then
     set +a
 fi
 
+if [ -n "${NGROK_AUTHTOKEN:-}" ] && command -v ngrok >/dev/null 2>&1; then
+    ngrok config add-authtoken "$NGROK_AUTHTOKEN" >/dev/null 2>&1
+fi
+
 touch .env
 chmod 600 .env
 
@@ -335,57 +350,8 @@ fi
 # 11. Script para reiniciar servicios
 # --------------------------------------------------
 
-cat >"$AURAX_DIR/start_all.sh" <<'START'
-#!/usr/bin/env bash
-
-cd /workspace/AuraX
-
-if [ -f /workspace/secrets.env ]; then
-    set -a
-    source /workspace/secrets.env
-    set +a
-fi
-
-pkill -f '[o]llama serve' 2>/dev/null || true
-
-nohup env \
-    OLLAMA_HOST=0.0.0.0:11434 \
-    OLLAMA_MAX_LOADED_MODELS=1 \
-    OLLAMA_NUM_PARALLEL=1 \
-    OLLAMA_KEEP_ALIVE=5m \
-    OLLAMA_FLASH_ATTENTION=1 \
-    ollama serve \
-    >/tmp/ollama.log 2>&1 &
-
-sleep 3
-
-pkill -f '[s]earx.webapp' 2>/dev/null || true
-
-cd /workspace/searxng
-
-SEARXNG_SETTINGS_PATH=/etc/searxng/settings.yml \
-nohup python3 -m searx.webapp \
->/tmp/searxng.log 2>&1 &
-
-cd /workspace/AuraX
-
-pkill -f '[p]ython3 servidor.py' 2>/dev/null || true
-
-nohup python3 servidor.py \
->/tmp/flask.log 2>&1 &
-
-if [ -n "${DISCORD_TOKEN:-}" ]; then
-
-    pkill -f '[p]ython3 discord_bot.py' 2>/dev/null || true
-
-    nohup python3 discord_bot.py \
-    >/tmp/bot.log 2>&1 &
-
-fi
-
-echo "AuraX iniciado."
-START
-
+# start_all.sh ya viene versionado en GitHub.
+# NO regenerarlo aquí porque se perdería la versión completa.
 chmod +x "$AURAX_DIR/start_all.sh"
 
 # --------------------------------------------------

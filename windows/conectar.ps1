@@ -76,6 +76,13 @@ Write-Host "[AuraX] SSH: root@$IP`:$Port"
 $Secrets = Import-Clixml $SecretFile
 $Token = SecureToPlain $Secrets.DiscordToken
 
+$NgrokToken = $null
+if ($Secrets.PSObject.Properties.Name -contains "NgrokToken") {
+    if ($Secrets.NgrokToken) {
+        $NgrokToken = SecureToPlain $Secrets.NgrokToken
+    }
+}
+
 $TmpSecrets = Join-Path $env:TEMP "aurax-secrets.env"
 
 try {
@@ -86,6 +93,11 @@ try {
 export DISCORD_TOKEN='$EscapedToken'
 export DISCORD_OWNER_ID='1086360701632794666'
 "@
+
+    if ($NgrokToken) {
+        $EscapedNgrokToken = $NgrokToken.Replace("'", "'\''")
+        $Content += "`nexport NGROK_AUTHTOKEN='$EscapedNgrokToken'`n"
+    }
 
     [IO.File]::WriteAllText(
         $TmpSecrets,
@@ -179,7 +191,7 @@ Write-Host "[AuraX] Abriendo VS Code..."
 }
 finally {
 
-    $Token = $null
+    $Token = $null`n    $NgrokToken = $null
 
     try {
         [System.IO.File]::Delete([string]$TmpSecrets)

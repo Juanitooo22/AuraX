@@ -17,6 +17,10 @@ if [ -f /workspace/secrets.env ]; then
     set +a
 fi
 
+if [ -n "${NGROK_AUTHTOKEN:-}" ] && command -v ngrok >/dev/null 2>&1; then
+    ngrok config add-authtoken "$NGROK_AUTHTOKEN" >/dev/null 2>&1 || true
+fi
+
 # ============================================================
 # OLLAMA
 # ============================================================
@@ -122,7 +126,7 @@ pkill -f '[n]grok http' 2>/dev/null || true
 
 if command -v ngrok >/dev/null 2>&1; then
 
-    nohup ngrok http 5000 \
+    nohup ngrok http --url=surround-editor-shun.ngrok-free.dev 5000 \
         >/workspace/ngrok.log 2>&1 &
 
     NGROK_URL=""
