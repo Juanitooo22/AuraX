@@ -5,8 +5,6 @@ $ErrorActionPreference = "Stop"
 $Base       = Join-Path $env:USERPROFILE "Desktop\AuraX-Local"
 $SecretFile = Join-Path $Base "secrets.clixml"
 $SshKey     = Join-Path $env:USERPROFILE ".ssh\id_ed25519"
-$McpDir     = Join-Path $env:USERPROFILE "Desktop\MCPBridge"
-$McpServer  = Join-Path $McpDir "mcp-server\index.js"
 
 New-Item -ItemType Directory -Force -Path $Base | Out-Null
 
@@ -167,22 +165,7 @@ export DISCORD_OWNER_ID='1086360701632794666'
         -TimeoutSec 10
 
     Write-Host "[AuraX] Ollama responde correctamente."
-
-    if (Test-Path $McpServer) {
-
-        Write-Host "[AuraX] Arrancando MCPBridge..."
-
-        Start-Process `
-            -FilePath "powershell.exe" `
-            -WorkingDirectory (Split-Path $McpServer) `
-            -ArgumentList @(
-                "-NoExit",
-                "-Command",
-                "node index.js"
-            )
-    }
-
-    Write-Host "[AuraX] Abriendo VS Code..."
+Write-Host "[AuraX] Abriendo VS Code..."
     Start-Process code
 
     Write-Host ""
@@ -205,5 +188,6 @@ finally {
         # No bloquear AuraX por un fallo de limpieza temporal
     }
 }
+
 
 
