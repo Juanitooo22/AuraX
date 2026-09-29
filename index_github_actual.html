@@ -596,7 +596,7 @@ function appendBubble(role,content,animate=true){
     const parsed=parseAttachmentBlocks(content);
     const imgP=parseImageBlock(parsed.text||content);
     bubble.innerHTML=parseMarkdown(imgP.text);
-    if(imgP.imagePrompt){ const img=document.createElement('img'); img.src=`https://drained-expand-implosive.ngrok-free.dev/generate-image?prompt=${encodeURIComponent(imgP.imagePrompt)}`; img.style.cssText='max-width:100%;border-radius:12px;margin-top:8px;display:block'; bubble.appendChild(img); }
+    if(imgP.imagePrompt){ const img=document.createElement('img'); img.src=`https://surround-editor-shun.ngrok-free.dev/generate-image?prompt=${encodeURIComponent(imgP.imagePrompt)}`; img.style.cssText='max-width:100%;border-radius:12px;margin-top:8px;display:block'; bubble.appendChild(img); }
     if(parsed.attachments.length>0){
       const dw=document.createElement('div'); dw.className='file-download';
       parsed.attachments.forEach(att=>{ const btn=document.createElement('button'); btn.className='file-download-btn'; btn.textContent=`⬇ Descargar ${att.name}`; btn.onclick=()=>window.downloadGeneratedFile(att); dw.appendChild(btn); });
@@ -610,7 +610,7 @@ function removeTyping(){ const t=document.getElementById('typing-row'); if(t) t.
 
 window.downloadGeneratedFile=async(att)=>{
   try{
-    const res=await fetch('https://drained-expand-implosive.ngrok-free.dev/generate-file',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify({type:att.type,name:att.name,content:att.content})});
+    const res=await fetch('https://surround-editor-shun.ngrok-free.dev/generate-file',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify({type:att.type,name:att.name,content:att.content})});
     if(!res.ok) throw new Error('Error'); const blob=await res.blob(); const url=URL.createObjectURL(blob);
     const a=document.createElement('a'); a.href=url; a.download=att.name||'archivo'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   }catch(e){ console.error(e); }
@@ -646,7 +646,7 @@ window.sendMessage=async()=>{
   try{
     const body={mensaje:msg,modelo:currentModel,web_search:webSearchOn,chat_id:activeId,user_id:currentUser?.uid,history:chat.history.slice(-6)};
     if(attachedFile&&attachedFileData){ body.file_data=attachedFileData; body.file_name=attachedFile.name; body.file_type=attachedFile.type; }
-    const res=await fetch('https://drained-expand-implosive.ngrok-free.dev/chat',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify(body)});
+    const res=await fetch('https://surround-editor-shun.ngrok-free.dev/chat',{method:'POST',headers:{'Content-Type':'application/json','ngrok-skip-browser-warning':'1'},body:JSON.stringify(body)});
     const data=await res.json(); const reply=data.respuesta||data.response||'Error: sin respuesta';
     removeTyping(); appendBubble('ai',reply); chat.history.push({role:'assistant',content:reply}); await saveChat(chat);
   }catch(e){ removeTyping(); const err=`Error: ${e.message}`; appendBubble('ai',err); chat.history.push({role:'assistant',content:err}); }
@@ -656,7 +656,7 @@ window.sendMessage=async()=>{
 // ============================================================
 // AURAX — MODO LLAMADA: respuesta por streaming + TTS por frases
 // ============================================================
-const NGROK = 'https://drained-expand-implosive.ngrok-free.dev';
+const NGROK = 'https://surround-editor-shun.ngrok-free.dev';
 let callActive=false, isMuted=false, mediaStream=null, audioContext=null, analyser=null;
 let recognition=null, recognitionRunning=false, recognitionRestart=null;
 let currentAudio=null, currentAudioUrl=null;
